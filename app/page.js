@@ -63,13 +63,12 @@ export default function HomePage() {
               >
                 <div className="aspect-[4/5] bg-earth-100 rounded-lg overflow-hidden mb-3">
                   <img
-                    src={`${category.image}.jpg`}
+                    src={`${category.image}.jpeg`}
                     alt={category.name}
                     loading="lazy"
                     width="400"
                     height="500"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    onError={(e) => { e.target.src = `${category.image}.jpeg`; }}
                   />
                 </div>
                 <span className="text-sm font-medium text-earth-700 group-hover:text-gold-600 transition-colors flex items-center gap-1">

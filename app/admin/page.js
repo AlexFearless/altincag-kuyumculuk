@@ -8,7 +8,7 @@ import Link from 'next/link';
 export default function AdminDashboard() {
   const [admin, setAdmin] = useState(null);
   const [stats, setStats] = useState({ products: 0, orders: 0, revenue: 0, users: 0, unreadMessages: 0 });
-  const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -24,30 +24,24 @@ export default function AdminDashboard() {
       setAdmin(JSON.parse(adminInfo));
     }
 
+    setAuthChecked(true);
     fetchStats(token);
   }, [router]);
 
   const fetchStats = async (token) => {
     try {
-      const [productsRes, ordersRes, usersRes, messagesRes] = await Promise.all([
-        fetch('/api/admin/products', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('/api/admin/orders', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('/api/admin/users', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('/api/messages', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const [productsRes, ordersRes, usersRes, messagesRes] = await Promise.allSettled([
+        fetch('/api/admin/products', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/messages', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
-      const productsData = await productsRes.json();
-      const ordersData = await ordersRes.json();
-      const usersData = await usersRes.json();
-      const messagesData = await messagesRes.json();
+      const get = (r) => r.status === 'fulfilled' ? r.value.json() : Promise.resolve({});
+
+      const [productsData, ordersData, usersData, messagesData] = await Promise.all([
+        get(productsRes), get(ordersRes), get(usersRes), get(messagesRes),
+      ]);
 
       setStats({
         products: productsData.total || 0,
@@ -61,8 +55,6 @@ export default function AdminDashboard() {
       });
     } catch (error) {
       console.error('Stats error:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -74,7 +66,7 @@ export default function AdminDashboard() {
     router.push('/admin/login');
   };
 
-  if (loading) {
+  if (!authChecked) {
     return (
       <div className="min-h-screen bg-earth-50 flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-gold-500 border-t-transparent rounded-full animate-spin" />
