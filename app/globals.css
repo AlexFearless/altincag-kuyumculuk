@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --cream-50: #FEFCF8;
+  --cream-100: #FDF8EE;
+  --cream-200: #F9EDD4;
+  --cream-300: #F3DFB0;
+  --gold-500: #D4A843;
+  --gold-600: #B8912A;
+  --gold-700: #8C6D1F;
+  --earth-500: #96785A;
+  --earth-700: #5E4832;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--cream-50);
+  color: var(--earth-700);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  zoom: 0.88;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+@layer components {
+  .btn-gold {
+    @apply bg-gold-500 text-white px-6 py-3 rounded-sm font-medium
+           hover:bg-gold-600 transition-all duration-300 ease-in-out
+           focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2;
+  }
+
+  .btn-outline {
+    @apply border-2 border-gold-500 text-gold-700 px-6 py-3 rounded-sm font-medium
+           hover:bg-gold-500 hover:text-white transition-all duration-300 ease-in-out
+           focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 border border-earth-200 rounded-sm
+           focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500
+           transition-colors duration-200 bg-white;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .section-padding {
+    @apply px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
