@@ -65,6 +65,9 @@ export default function HomePage() {
                   <img
                     src={`${category.image}.jpg`}
                     alt={category.name}
+                    loading="lazy"
+                    width="400"
+                    height="500"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     onError={(e) => { e.target.src = `${category.image}.jpeg`; }}
                   />
