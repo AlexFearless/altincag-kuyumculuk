@@ -72,7 +72,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
-  // Periyodik hesap aktiflik kontrolu (her 5 dakikada)
+  // Periyodik hesap aktiflik kontrolu (her 60 saniyede)
   useEffect(() => {
     if (!token) return;
     const interval = setInterval(async () => {
@@ -81,12 +81,16 @@ export function AuthProvider({ children }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        if (!res.ok && data.error === 'Hesabınız devre dışı') {
+        if (!res.ok || data.error === 'Hesabınız devre dışı') {
           logout();
           window.location.href = '/giris?reason=deactivated';
+        } else if (data.user) {
+          setUser(data.user);
+          const storage = localStorage.getItem('user_token') ? localStorage : sessionStorage;
+          storage.setItem('user_info', JSON.stringify(data.user));
         }
       } catch {}
-    }, 300000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [token, logout]);
 
