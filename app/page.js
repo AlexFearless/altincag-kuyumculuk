@@ -323,7 +323,7 @@ export default function HomePage() {
               <ShieldIcon className="w-12 h-12 text-gold-500 mx-auto mb-4" />
               <h3 className="font-serif text-lg font-semibold mb-2">Güvenli Alışveriş</h3>
               <p className="text-earth-300 text-sm">
-                PayTR ile güvenli ödeme
+                256-bit SSL ile güvenli ödeme
               </p>
             </div>
             <div className="p-6">

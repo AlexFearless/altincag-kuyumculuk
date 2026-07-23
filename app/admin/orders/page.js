@@ -314,7 +314,7 @@ export default function AdminOrders() {
                 <div className="bg-earth-50 p-4 rounded-sm text-sm space-y-1">
                   <p><span className="text-earth-500">Sipariş No:</span> #{selectedOrder.orderNumber}</p>
                   <p><span className="text-earth-500">Tarih:</span> {new Date(selectedOrder.createdAt).toLocaleString('tr-TR')}</p>
-                  <p><span className="text-earth-500">Ödeme:</span> {selectedOrder.paymentMethod === 'paytr' ? 'Kredi Kartı' : 'Havale/EFT'}</p>
+                  <p><span className="text-earth-500">Ödeme:</span> {selectedOrder.paymentMethod === 'kapida' ? 'Kapıda Ödeme' : selectedOrder.paymentMethod === 'havale' ? 'Havale/EFT' : 'Kredi Kartı'}</p>
                   <p><span className="text-earth-500">Ödeme Durumu:</span> {selectedOrder.paymentStatus === 'paid' ? '✓ Ödendi' : '⏳ Beklemede'}</p>
                   {selectedOrder.guestId && <p><span className="text-earth-500">Kullanıcı ID:</span> {selectedOrder.guestId}</p>}
                 </div>

@@ -51,7 +51,7 @@ export default function DistanceSalesContract() {
               <p>
                 Alıcı, sipariş ettiği ürünlerin bedelini ödeme seçeneklerinden birini
                 kullanarak ödeyebilir. Kredi kartı ile yapılan ödemelerde, kart bilgileri
-                PayTR güvenlik altyapısı ile güvenli bir şekilde işlenir.
+                256-bit SSL güvenlik altyapısı ile güvenli bir şekilde işlenir.
               </p>
             </section>
 
