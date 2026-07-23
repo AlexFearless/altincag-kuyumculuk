@@ -211,34 +211,16 @@ export default function AdminDashboard() {
             <p className="text-earth-500 text-sm">İndirim kuponları oluştur ve yönet.</p>
           </Link>
 
-          <Link href="/admin/categories" className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow group">
-            <CategoryIcon className="w-12 h-12 text-earth-300 group-hover:text-gold-500 transition-colors mb-4" />
-            <h3 className="font-serif text-xl font-semibold text-earth-800 mb-2">Kategori Yönetimi</h3>
-            <p className="text-earth-500 text-sm">Kategorileri ekle, düzenle veya sil.</p>
-          </Link>
-
-          <Link href="/admin/banners" className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow group">
-            <BannerIcon className="w-12 h-12 text-earth-300 group-hover:text-gold-500 transition-colors mb-4" />
-            <h3 className="font-serif text-xl font-semibold text-earth-800 mb-2">Banner Yönetimi</h3>
-            <p className="text-earth-500 text-sm">Ana sayfa bannerlarını yönet.</p>
+          <Link href="/admin/announcements" className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow group">
+            <MegaphoneIcon className="w-12 h-12 text-earth-300 group-hover:text-gold-500 transition-colors mb-4" />
+            <h3 className="font-serif text-xl font-semibold text-earth-800 mb-2">Duyuru Yönetimi</h3>
+            <p className="text-earth-500 text-sm">Sitede görünecek duyuruları yönet.</p>
           </Link>
 
           <Link href="/admin/reports" className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow group">
             <ReportIcon className="w-12 h-12 text-earth-300 group-hover:text-gold-500 transition-colors mb-4" />
             <h3 className="font-serif text-xl font-semibold text-earth-800 mb-2">Satış Raporları</h3>
             <p className="text-earth-500 text-sm">Günlük, aylık satış istatistikleri.</p>
-          </Link>
-
-          <Link href="/admin/store-settings" className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow group">
-            <SettingsIcon className="w-12 h-12 text-earth-300 group-hover:text-gold-500 transition-colors mb-4" />
-            <h3 className="font-serif text-xl font-semibold text-earth-800 mb-2">Mağaza Ayarları</h3>
-            <p className="text-earth-500 text-sm">Mağaza bilgileri, sosyal medya, duyurular.</p>
-          </Link>
-
-          <Link href="/admin/notifications" className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow group">
-            <BellIcon className="w-12 h-12 text-earth-300 group-hover:text-gold-500 transition-colors mb-4" />
-            <h3 className="font-serif text-xl font-semibold text-earth-800 mb-2">Bildirimler</h3>
-            <p className="text-earth-500 text-sm">Sistem bildirimlerini görüntüle.</p>
           </Link>
 
           <Link href="/admin/logs" className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow group">
@@ -308,22 +290,6 @@ function CouponIcon({ className }) {
   );
 }
 
-function CategoryIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-    </svg>
-  );
-}
-
-function BannerIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
-    </svg>
-  );
-}
-
 function ReportIcon({ className }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -332,19 +298,18 @@ function ReportIcon({ className }) {
   );
 }
 
-function SettingsIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  );
-}
-
 function BellIcon({ className }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+    </svg>
+  );
+}
+
+function MegaphoneIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.52-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
     </svg>
   );
 }
