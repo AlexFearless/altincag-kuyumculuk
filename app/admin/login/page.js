@@ -14,11 +14,9 @@ export default function AdminLogin() {
   const router = useRouter();
 
   useEffect(() => {
-    // Beni Hatırla: localStorage'dan, değilse sessionStorage'dan oku
     const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
     const adminInfo = localStorage.getItem('admin_info') || sessionStorage.getItem('admin_info');
     if (token && adminInfo) {
-      // Token varsa ve geçerli mi kontrol et (IP tabanlı)
       fetch('/api/admin/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -29,15 +27,13 @@ export default function AdminLogin() {
           if (data.success) {
             router.push('/admin');
           } else {
-            // Token geçersiz, temizle
-            localStorage.removeItem('admin_token');
-            localStorage.removeItem('admin_info');
-            sessionStorage.removeItem('admin_token');
-            sessionStorage.removeItem('admin_info');
             setCheckingAuth(false);
           }
         })
-        .catch(() => setCheckingAuth(false));
+        .catch(() => {
+          // Sunucu hatası olursa yine de panele yönlendir, token'ı silme
+          router.push('/admin');
+        });
     } else {
       setCheckingAuth(false);
     }
