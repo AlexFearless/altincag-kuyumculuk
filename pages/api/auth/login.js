@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '';
     await supabaseAdmin.from('users').update({ last_login_ip: ip }).eq('id', user.id);
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '5y' });
 
     res.status(200).json({
       success: true,

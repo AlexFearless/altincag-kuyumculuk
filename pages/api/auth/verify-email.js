@@ -57,7 +57,7 @@ export default async function handler(req, res) {
       })
       .eq('id', user.id);
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '5y' });
 
     res.status(200).json({
       success: true,
