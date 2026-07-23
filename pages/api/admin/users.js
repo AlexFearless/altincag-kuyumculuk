@@ -1,19 +1,37 @@
 import jwt from 'jsonwebtoken';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
-import Admin from '@/models/Admin';
+import { supabaseAdmin } from '@/lib/supabase';
+import bcrypt from 'bcryptjs';
 import { createLog } from '@/pages/api/admin/logs';
-import { sanitize } from '@/lib/sanitize';
-import { validateEmail, validatePhone } from '@/lib/sanitize';
+import { sanitize, validateEmail, validatePhone } from '@/lib/sanitize';
 
 async function verifyAdminActive(token) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    await dbConnect();
-    const admin = await Admin.findById(decoded.id).select('isActive email');
-    if (!admin || !admin.isActive) return null;
+    const { data: admin } = await supabaseAdmin
+      .from('admins')
+      .select('id, is_active, email')
+      .eq('id', decoded.id)
+      .single();
+    if (!admin || !admin.is_active) return null;
     return { id: decoded.id, email: admin.email };
-  } catch { return null; }
+  } catch {
+    return null;
+  }
+}
+
+function mapUser(u) {
+  return {
+    _id: u.id,
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    phone: u.phone,
+    address: u.address,
+    isActive: u.is_active,
+    emailVerified: u.email_verified,
+    createdAt: u.created_at,
+    updatedAt: u.updated_at,
+  };
 }
 
 export default async function handler(req, res) {
@@ -24,12 +42,14 @@ export default async function handler(req, res) {
   const adminData = await verifyAdminActive(authHeader.split(' ')[1]);
   if (!adminData) return res.status(401).json({ error: 'Geçersiz veya pasif hesap' });
 
-  await dbConnect();
-
   if (req.method === 'GET') {
     try {
-      const users = await User.find({}).select('-password').sort({ createdAt: -1 });
-      res.status(200).json({ success: true, users, total: users.length });
+      const { data: users } = await supabaseAdmin
+        .from('users')
+        .select('id, name, email, phone, address, is_active, email_verified, created_at, updated_at')
+        .order('created_at', { ascending: false });
+
+      res.status(200).json({ success: true, users: (users || []).map(mapUser), total: (users || []).length });
     } catch (error) {
       res.status(500).json({ error: 'Kullanıcılar yüklenemedi' });
     }
@@ -55,21 +75,29 @@ export default async function handler(req, res) {
       }
       if (password !== undefined && String(password).trim()) {
         if (String(password).length < 6) return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı' });
-        updateData.password = String(password);
+        updateData.password = await bcrypt.hash(String(password), 12);
       }
-      if (isActive !== undefined) updateData.isActive = !!isActive;
+      if (isActive !== undefined) updateData.is_active = !!isActive;
 
-      const user = await User.findByIdAndUpdate(id, updateData, { new: true }).select('-password');
-      if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+      if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Güncellenecek alan yok' });
+
+      const { data: user, error } = await supabaseAdmin
+        .from('users')
+        .update(updateData)
+        .eq('id', id)
+        .select('id, name, email, phone, address, is_active, email_verified, created_at, updated_at')
+        .single();
+
+      if (error) {
+        if (error.code === '23505') return res.status(400).json({ error: 'Bu e-posta adresi zaten kullanımda' });
+        return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+      }
 
       const action = isActive === false ? 'Kullanıcı pasifleştirildi' : 'Kullanıcı güncellendi';
       createLog({ action, adminEmail: adminData.email, targetType: 'user', targetId: id, details: { name: user.name, email: user.email }, req });
 
-      res.status(200).json({ success: true, user });
+      res.status(200).json({ success: true, user: mapUser(user) });
     } catch (error) {
-      if (error.code === 11000) {
-        return res.status(400).json({ error: 'Bu e-posta adresi zaten kullanımda' });
-      }
       res.status(500).json({ error: 'Kullanıcı güncellenemedi' });
     }
   } else if (req.method === 'DELETE') {
@@ -77,11 +105,15 @@ export default async function handler(req, res) {
       const { id } = req.query;
       if (!id) return res.status(400).json({ error: 'Kullanıcı ID gerekli' });
 
-      const user = await User.findById(id).select('-password');
-      await User.findByIdAndDelete(id);
+      const { data: user } = await supabaseAdmin
+        .from('users')
+        .select('name, email')
+        .eq('id', id)
+        .single();
+
+      await supabaseAdmin.from('users').delete().eq('id', id);
 
       createLog({ action: 'Kullanıcı silindi', adminEmail: adminData.email, targetType: 'user', targetId: id, details: { name: user?.name, email: user?.email }, req });
-
       res.status(200).json({ success: true, message: 'Kullanıcı silindi' });
     } catch (error) {
       res.status(500).json({ error: 'Kullanıcı silinemedi' });

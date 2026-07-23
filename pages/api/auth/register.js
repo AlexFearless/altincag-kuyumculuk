@@ -1,5 +1,5 @@
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { rateLimit } from '@/lib/rateLimit';
 import { validateEmail, validatePhone, sanitize } from '@/lib/sanitize';
@@ -45,13 +45,11 @@ export default async function handler(req, res) {
   if (!limiter(req, res)) return;
 
   try {
-    await dbConnect();
     const { name, email, password, phone } = req.body;
 
     if (!name || !email || !password || !phone) {
       return res.status(400).json({ error: 'Ad, e-posta, telefon ve şifre zorunludur' });
     }
-
     if (typeof name !== 'string' || name.trim().length < 2 || name.length > 100) {
       return res.status(400).json({ error: 'Geçersiz isim' });
     }
@@ -65,61 +63,68 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Geçersiz telefon numarası' });
     }
 
-    const existingUser = await User.findOne({ email: String(email).toLowerCase().trim() });
+    const cleanEmail = email.toLowerCase().trim();
+
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', cleanEmail)
+      .single();
+
     if (existingUser) {
       return res.status(409).json({ error: 'Bu e-posta adresi zaten kayıtlı' });
     }
 
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '';
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '';
     const verificationCode = generateCode();
-    const verificationExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 dakika
+    const verificationExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    const user = new User({
-      name: sanitize(name.trim()),
-      email: email.toLowerCase().trim(),
-      password,
-      phone: sanitize(phone),
-      ipAddress: ip,
-      lastLoginIp: ip,
-      isActive: false,
-      emailVerified: false,
-      verificationCode,
-      verificationExpires,
-    });
-    await user.save();
+    const { data: user, error: insertError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        name: sanitize(name.trim()),
+        email: cleanEmail,
+        password: hashedPassword,
+        phone: sanitize(phone),
+        ip_address: ip,
+        last_login_ip: ip,
+        is_active: false,
+        email_verified: false,
+        verification_code: verificationCode,
+        verification_expires: verificationExpires,
+      })
+      .select('id, name, email, phone')
+      .single();
+
+    if (insertError) {
+      console.error('Register insert error:', insertError);
+      return res.status(500).json({ error: 'Kayıt sırasında hata oluştu' });
+    }
 
     let emailSent = false;
     let emailError = null;
     try {
-      await sendVerificationEmail(email.toLowerCase().trim(), name.trim(), verificationCode);
+      await sendVerificationEmail(cleanEmail, name.trim(), verificationCode);
       emailSent = true;
     } catch (err) {
       console.error('Email send failed:', err.message);
       emailError = err.message;
     }
 
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '10m' }
-    );
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '10m' });
 
     res.status(201).json({
       success: true,
       requiresVerification: true,
-      email: email.toLowerCase().trim(),
+      email: cleanEmail,
       emailSent,
       emailError,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-      },
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone },
     });
   } catch (error) {
-    console.error('Register error');
+    console.error('Register error:', error);
     res.status(500).json({ error: 'Kayıt sırasında hata oluştu' });
   }
 }

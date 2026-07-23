@@ -1,5 +1,4 @@
-import dbConnect from '@/lib/mongodb';
-import Product from '@/models/Product';
+import { supabaseAdmin } from '@/lib/supabase';
 import { withAuth } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
 
@@ -9,7 +8,6 @@ async function handler(req, res) {
   }
 
   try {
-    await dbConnect();
     const { category, discountPercent, discountType, productIds } = req.body;
 
     if (discountPercent === undefined || isNaN(Number(discountPercent))) {
@@ -20,34 +18,46 @@ async function handler(req, res) {
     }
 
     const type = discountType === 'fake' ? 'fake' : 'real';
+    let query = supabaseAdmin.from('products').select('id, price');
 
-    let query = {};
     if (productIds && Array.isArray(productIds) && productIds.length > 0) {
       if (productIds.length > 100) return res.status(400).json({ error: 'En fazla 100 ürün seçilebilir' });
-      query._id = { $in: productIds };
+      query = query.in('id', productIds);
     } else if (category && typeof category === 'string') {
-      query.category = category;
+      query = query.eq('category', category);
     } else {
       return res.status(400).json({ error: 'Kategori veya ürün listesi gerekli' });
     }
 
-    if (type === 'real' && discountPercent > 0) {
-      const products = await Product.find(query);
-      const bulkOps = products.map(p => ({
-        updateOne: {
-          filter: { _id: p._id },
-          update: { $set: { discountPercent, discountType: type, discountedPrice: p.price * (1 - discountPercent / 100) } },
-        },
-      }));
-      if (bulkOps.length > 0) await Product.bulkWrite(bulkOps);
-      createLog({ action: `%${discountPercent} gerçek indirim uygulandı`, adminEmail: req.admin?.email || 'admin', targetType: 'discount', details: { category, count: bulkOps.length }, req });
-      res.status(200).json({ success: true, message: `${bulkOps.length} ürüne %${discountPercent} gerçek indirim uygulandı`, modifiedCount: bulkOps.length });
-    } else {
-      const result = await Product.updateMany(query, { $set: { discountPercent, discountType: type, discountedPrice: 0 } });
-      createLog({ action: `%${discountPercent} sahte indirim uygulandı`, adminEmail: req.admin?.email || 'admin', targetType: 'discount', details: { category, count: result.modifiedCount }, req });
-      res.status(200).json({ success: true, message: `${result.modifiedCount} ürüne %${discountPercent} sahte indirim uygulandı`, modifiedCount: result.modifiedCount });
+    const { data: products } = await query;
+    if (!products || products.length === 0) {
+      return res.status(200).json({ success: true, message: 'Eşleşen ürün bulunamadı', modifiedCount: 0 });
     }
+
+    const updates = products.map(p => {
+      const discountedPrice = type === 'real' && discountPercent > 0
+        ? Math.round(p.price * (1 - discountPercent / 100) * 100) / 100
+        : 0;
+      return supabaseAdmin
+        .from('products')
+        .update({
+          discount_percent: Number(discountPercent),
+          discount_type: type,
+          discounted_price: discountedPrice,
+        })
+        .eq('id', p.id);
+    });
+
+    await Promise.all(updates);
+
+    const action = type === 'real'
+      ? `%${discountPercent} gerçek indirim uygulandı`
+      : `%${discountPercent} sahte indirim uygulandı`;
+
+    createLog({ action, adminEmail: req.admin?.email || 'admin', targetType: 'discount', details: { category, count: products.length }, req });
+    res.status(200).json({ success: true, message: `${products.length} ürüne %${discountPercent} ${type === 'real' ? 'gerçek' : 'sahte'} indirim uygulandı`, modifiedCount: products.length });
   } catch (error) {
+    console.error('Discount error:', error);
     res.status(500).json({ error: 'İndirim uygulanırken hata oluştu' });
   }
 }

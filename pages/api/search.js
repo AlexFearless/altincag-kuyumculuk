@@ -1,9 +1,4 @@
-import dbConnect from '@/lib/mongodb';
-import Product from '@/models/Product';
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+import { supabase } from '@/lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -11,8 +6,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    await dbConnect();
-
     const { q, limit = 10 } = req.query;
 
     if (typeof q !== 'string') {
@@ -24,23 +17,27 @@ export default async function handler(req, res) {
       return res.status(200).json({ products: [] });
     }
 
-    const safeRegex = new RegExp(escapeRegex(trimmed), 'i');
-
-    const products = await Product.find({
-      isActive: true,
-      $or: [
-        { name: safeRegex },
-        { description: safeRegex },
-        { category: safeRegex },
-        { material: safeRegex },
-      ],
-    })
-      .select('name slug price discountedPrice images category discountPercent')
+    const { data: products } = await supabase
+      .from('products')
+      .select('name, slug, price, discounted_price, images, category, discount_percent, discount_type')
+      .eq('is_active', true)
+      .or(`name.ilike.%${trimmed}%,description.ilike.%${trimmed}%,category.ilike.%${trimmed}%,material.ilike.%${trimmed}%`)
       .limit(Math.min(parseInt(limit) || 10, 50));
 
-    res.status(200).json({ products });
+    const mapped = (products || []).map(p => ({
+      name: p.name,
+      slug: p.slug,
+      price: p.price,
+      discountedPrice: p.discounted_price,
+      images: p.images || [],
+      category: p.category,
+      discountPercent: p.discount_percent,
+      discountType: p.discount_type,
+    }));
+
+    res.status(200).json({ products: mapped });
   } catch (error) {
-    console.error('Search error');
+    console.error('Search error:', error);
     res.status(500).json({ error: 'Arama yapılırken hata oluştu' });
   }
 }

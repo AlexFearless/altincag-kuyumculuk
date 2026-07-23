@@ -1,5 +1,4 @@
-import dbConnect from '@/lib/mongodb';
-import Product from '@/models/Product';
+import { supabase } from '@/lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -7,33 +6,47 @@ export default async function handler(req, res) {
   }
 
   try {
-    await dbConnect();
-
     const { category, featured, limit = 50, page = 1 } = req.query;
-    const query = { isActive: true };
+    const safeLimit = parseInt(limit) || 50;
+    const from = (parseInt(page) - 1) * safeLimit;
+    const to = from + safeLimit - 1;
 
-    if (category) {
-      query.category = category;
-    }
+    let query = supabase.from('products').select('*', { count: 'exact' }).eq('is_active', true);
 
-    if (featured === 'true') {
-      query.isFeatured = true;
-    }
+    if (category) query = query.eq('category', category);
+    if (featured === 'true') query = query.eq('is_featured', true);
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const products = await Product.find(query)
-      .select('-__v')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    const { data: products, count } = await query
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
-    const total = await Product.countDocuments(query);
+    const mapped = (products || []).map(p => ({
+      _id: p.id,
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      description: p.description,
+      price: p.price,
+      discountedPrice: p.discounted_price,
+      category: p.category,
+      images: p.images || [],
+      stock: p.stock,
+      isActive: p.is_active,
+      isFeatured: p.is_featured,
+      karat: p.karat,
+      weight: p.weight,
+      material: p.material,
+      discountPercent: p.discount_percent,
+      discountType: p.discount_type,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+    }));
 
     res.status(200).json({
-      products,
-      total,
+      products: mapped,
+      total: count || 0,
       page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit)),
+      pages: Math.ceil((count || 0) / safeLimit),
     });
   } catch (error) {
     console.error('Products API error:', error);

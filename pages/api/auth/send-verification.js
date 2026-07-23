@@ -1,5 +1,4 @@
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimit';
 import sgMail from '@sendgrid/mail';
 
@@ -19,36 +18,42 @@ export default async function handler(req, res) {
   if (!limiter(req, res)) return;
 
   try {
-    await dbConnect();
     const { email } = req.body;
 
     if (!email || typeof email !== 'string') {
       return res.status(400).json({ error: 'E-posta adresi gerekli' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const cleanEmail = email.toLowerCase().trim();
+
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('email', cleanEmail)
+      .single();
+
     if (!user) {
       return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
     }
 
-    if (user.emailVerified) {
+    if (user.email_verified) {
       return res.status(400).json({ error: 'E-posta zaten doğrulanmış' });
     }
 
     const code = generateCode();
-    const expires = new Date(Date.now() + 10 * 60 * 1000);
+    const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    await User.findByIdAndUpdate(user._id, {
-      verificationCode: code,
-      verificationExpires: expires,
-    });
+    await supabaseAdmin
+      .from('users')
+      .update({ verification_code: code, verification_expires: expires })
+      .eq('id', user.id);
 
     let emailSent = false;
     let emailError = null;
     try {
       await sgMail.send({
         from: process.env.SENDGRID_FROM_EMAIL,
-        to: email.toLowerCase().trim(),
+        to: cleanEmail,
         subject: 'AltınÇağ Kuyumculuk - Yeni Doğrulama Kodu',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background-color: #f9f6f1; border-radius: 12px;">
@@ -74,7 +79,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({ success: true, message: 'Doğrulama kodu gönderildi', emailSent, emailError });
   } catch (error) {
-    console.error('Send verification error');
+    console.error('Send verification error:', error);
     res.status(500).json({ error: 'Kod gönderilemedi' });
   }
 }

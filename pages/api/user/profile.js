@@ -1,5 +1,4 @@
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
 import { sanitize, validateEmail, validatePhone } from '@/lib/sanitize';
 
@@ -10,15 +9,20 @@ export default async function handler(req, res) {
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
       }
-      const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      await dbConnect();
-      const user = await User.findById(decoded.id).select('-password');
+      const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+
+      const { data: user } = await supabaseAdmin
+        .from('users')
+        .select('id, name, email, phone, address, is_active')
+        .eq('id', decoded.id)
+        .single();
+
       if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
-      if (user.isActive === false) return res.status(403).json({ error: 'Hesabınız devre dışı' });
+      if (!user.is_active) return res.status(403).json({ error: 'Hesabınız devre dışı' });
+
       return res.status(200).json({
         success: true,
-        user: { id: user._id, name: user.name, email: user.email, phone: user.phone, address: user.address },
+        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address },
       });
     } catch (error) {
       if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
@@ -38,9 +42,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
     }
 
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    await dbConnect();
+    const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
 
     const { name, phone, email, address } = req.body;
     const updateData = {};
@@ -62,18 +64,28 @@ export default async function handler(req, res) {
       }
       updateData.email = String(email).toLowerCase().trim();
     }
-    if (address !== undefined) updateData.address = sanitize(String(address || ''));
+    if (address !== undefined) updateData.address = typeof address === 'object' ? address : sanitize(String(address || ''));
 
-    const user = await User.findByIdAndUpdate(decoded.id, { $set: updateData }, { new: true, runValidators: true }).select('-password');
-    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Güncellenecek alan yok' });
+
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .update(updateData)
+      .eq('id', decoded.id)
+      .select('id, name, email, phone, address')
+      .single();
+
+    if (error) {
+      if (error.code === '23505') return res.status(400).json({ error: 'Bu e-posta adresi zaten kullanımda' });
+      return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    }
 
     res.status(200).json({
       success: true,
-      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, address: user.address },
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address },
     });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') return res.status(401).json({ error: 'Geçersiz oturum' });
-    if (error.code === 11000) return res.status(400).json({ error: 'Bu e-posta adresi zaten kullanımda' });
     res.status(500).json({ error: 'Profil güncellenirken hata oluştu' });
   }
 }

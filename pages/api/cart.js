@@ -1,22 +1,48 @@
-import dbConnect from '@/lib/mongodb';
-import Cart from '@/models/Cart';
+import { supabaseAdmin } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimit';
 
 const cartLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla sepet işlemi. 1 dakika bekleyin.' });
 
 function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
-  return forwarded
-    ? forwarded.split(',')[0].trim()
-    : req.socket.remoteAddress;
+  return forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
+}
+
+async function getCartWithProducts(guestId) {
+  const { data: cart } = await supabaseAdmin.from('carts').select('id').eq('guest_id', guestId).single();
+  if (!cart) return [];
+
+  const { data: cartItems } = await supabaseAdmin
+    .from('cart_items')
+    .select('*, products(*)')
+    .eq('cart_id', cart.id);
+
+  if (!cartItems) return [];
+
+  return cartItems.map(ci => ({
+    _id: ci.id,
+    product: ci.products ? {
+      _id: ci.products.id,
+      id: ci.products.id,
+      name: ci.products.name,
+      slug: ci.products.slug,
+      price: ci.products.price,
+      discountedPrice: ci.products.discounted_price,
+      images: ci.products.images || [],
+      category: ci.products.category,
+      karat: ci.products.karat,
+      weight: ci.products.weight,
+      stock: ci.products.stock,
+      isActive: ci.products.is_active,
+    } : null,
+    quantity: ci.quantity,
+  })).filter(ci => ci.product);
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && !cartLimiter(req, res)) return;
 
   try {
-    await dbConnect();
-
     const guestId = req.headers['x-guest-id'];
     const ipAddress = getClientIp(req);
 
@@ -25,12 +51,10 @@ export default async function handler(req, res) {
     }
 
     switch (req.method) {
-      case 'GET':
-        const cart = await Cart.findOne({ guestId }).populate('items.product');
-        if (!cart) {
-          return res.status(200).json({ items: [] });
-        }
-        return res.status(200).json({ items: cart.items });
+      case 'GET': {
+        const items = await getCartWithProducts(guestId);
+        return res.status(200).json({ items });
+      }
 
       case 'POST': {
         const { productId, quantity = 1 } = req.body;
@@ -38,33 +62,44 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Geçersiz ürün ID' });
         }
         const qty = Math.min(Math.max(Number(quantity) || 1, 1), 100);
-        let existingCart = await Cart.findOne({ guestId });
 
-        if (!existingCart) {
-          existingCart = new Cart({
-            guestId,
-            ipAddress,
-            items: [{ product: productId, quantity: qty }],
-          });
-        } else {
-          if (existingCart.items.length >= 50) {
-            return res.status(400).json({ error: 'Sepet çok dolu, en fazla 50 ürün ekleyebilirsiniz' });
-          }
-          const itemIndex = existingCart.items.findIndex(
-            (item) => item.product.toString() === productId
-          );
+        let { data: cart } = await supabaseAdmin.from('carts').select('id').eq('guest_id', guestId).single();
 
-          if (itemIndex > -1) {
-            existingCart.items[itemIndex].quantity = Math.min(existingCart.items[itemIndex].quantity + qty, 100);
-          } else {
-            existingCart.items.push({ product: productId, quantity: qty });
-          }
-          existingCart.lastUpdated = new Date();
+        if (!cart) {
+          const { data: newCart } = await supabaseAdmin
+            .from('carts')
+            .insert({ guest_id: guestId, ip_address: ipAddress })
+            .select('id')
+            .single();
+          cart = newCart;
         }
 
-        await existingCart.save();
-        const updatedCart = await Cart.findOne({ guestId }).populate('items.product');
-        return res.status(200).json({ items: updatedCart.items });
+        const { data: existingItem } = await supabaseAdmin
+          .from('cart_items')
+          .select('id, quantity')
+          .eq('cart_id', cart.id)
+          .eq('product_id', productId)
+          .single();
+
+        if (existingItem) {
+          await supabaseAdmin
+            .from('cart_items')
+            .update({ quantity: Math.min(existingItem.quantity + qty, 100) })
+            .eq('id', existingItem.id);
+        } else {
+          const { count } = await supabaseAdmin
+            .from('cart_items')
+            .select('*', { count: 'exact', head: true })
+            .eq('cart_id', cart.id);
+
+          if ((count || 0) >= 50) {
+            return res.status(400).json({ error: 'Sepet çok dolu, en fazla 50 ürün ekleyebilirsiniz' });
+          }
+          await supabaseAdmin.from('cart_items').insert({ cart_id: cart.id, product_id: productId, quantity: qty });
+        }
+
+        const items = await getCartWithProducts(guestId);
+        return res.status(200).json({ items });
       }
 
       case 'PUT': {
@@ -72,59 +107,47 @@ export default async function handler(req, res) {
         if (!updateProductId || typeof updateProductId !== 'string') {
           return res.status(400).json({ error: 'Geçersiz ürün ID' });
         }
-        const cartToUpdate = await Cart.findOne({ guestId });
 
-        if (!cartToUpdate) {
-          return res.status(404).json({ error: 'Sepet bulunamadı' });
-        }
+        const { data: cart } = await supabaseAdmin.from('carts').select('id').eq('guest_id', guestId).single();
+        if (!cart) return res.status(404).json({ error: 'Sepet bulunamadı' });
 
         const qty = Number(newQuantity) || 0;
         if (qty <= 0) {
-          cartToUpdate.items = cartToUpdate.items.filter(
-            (item) => item.product.toString() !== updateProductId
-          );
+          await supabaseAdmin.from('cart_items').delete().eq('cart_id', cart.id).eq('product_id', updateProductId);
         } else {
-          const item = cartToUpdate.items.find(
-            (item) => item.product.toString() === updateProductId
-          );
-          if (item) {
-            item.quantity = Math.min(qty, 100);
-          }
+          await supabaseAdmin
+            .from('cart_items')
+            .update({ quantity: Math.min(qty, 100) })
+            .eq('cart_id', cart.id)
+            .eq('product_id', updateProductId);
         }
 
-        cartToUpdate.lastUpdated = new Date();
-        await cartToUpdate.save();
-        const refreshedCart = await Cart.findOne({ guestId }).populate('items.product');
-        return res.status(200).json({ items: refreshedCart.items });
+        const items = await getCartWithProducts(guestId);
+        return res.status(200).json({ items });
       }
 
       case 'DELETE': {
         const { productId: deleteProductId } = req.body;
-        const cartToDelete = await Cart.findOne({ guestId });
+        const { data: cart } = await supabaseAdmin.from('carts').select('id').eq('guest_id', guestId).single();
 
-        if (!cartToDelete) {
-          return res.status(404).json({ error: 'Sepet bulunamadı' });
-        }
+        if (!cart) return res.status(404).json({ error: 'Sepet bulunamadı' });
 
         if (deleteProductId && typeof deleteProductId === 'string') {
-          cartToDelete.items = cartToDelete.items.filter(
-            (item) => item.product.toString() !== deleteProductId
-          );
-          cartToDelete.lastUpdated = new Date();
-          await cartToDelete.save();
+          await supabaseAdmin.from('cart_items').delete().eq('cart_id', cart.id).eq('product_id', deleteProductId);
         } else {
-          await Cart.deleteOne({ guestId });
+          await supabaseAdmin.from('cart_items').delete().eq('cart_id', cart.id);
+          await supabaseAdmin.from('carts').delete().eq('id', cart.id);
         }
 
-        const clearedCart = await Cart.findOne({ guestId }).populate('items.product');
-        return res.status(200).json({ items: clearedCart ? clearedCart.items : [] });
+        const items = await getCartWithProducts(guestId);
+        return res.status(200).json({ items });
       }
 
       default:
         return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Cart API error');
+    console.error('Cart API error:', error);
     res.status(500).json({ error: 'Sepet işlemi sırasında hata oluştu' });
   }
 }

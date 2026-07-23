@@ -1,5 +1,4 @@
-import dbConnect from '@/lib/mongodb';
-import Order from '@/models/Order';
+import { supabase } from '@/lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -12,19 +11,30 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Geçerli bir sipariş veya kargo kodu girin' });
     }
 
-    await dbConnect();
+    const trimmedCode = code.trim();
 
-    const query = {
-      $or: [
-        { orderNumber: code.trim().toUpperCase() },
-        { trackingNumber: code.trim().toUpperCase() },
-        { trackingNumber: code.trim() },
-      ],
-    };
+    let { data: order } = await supabase
+      .from('orders')
+      .select('*, order_items(*, products(name, images))')
+      .eq('order_number', trimmedCode.toUpperCase())
+      .single();
 
-    const order = await Order.findOne(query)
-      .select('orderNumber trackingNumber orderStatus paymentMethod totalAmount items createdAt updatedAt shippingCost')
-      .populate('items.product', 'name images');
+    if (!order) {
+      const { data: order2 } = await supabase
+        .from('orders')
+        .select('*, order_items(*, products(name, images))')
+        .eq('tracking_number', trimmedCode.toUpperCase())
+        .single();
+      order = order2;
+    }
+    if (!order) {
+      const { data: order3 } = await supabase
+        .from('orders')
+        .select('*, order_items(*, products(name, images))')
+        .eq('tracking_number', trimmedCode)
+        .single();
+      order = order3;
+    }
 
     if (!order) {
       return res.status(404).json({ error: 'Sipariş bulunamadı. Kodu kontrol edin.' });
@@ -38,32 +48,38 @@ export default async function handler(req, res) {
     ];
 
     const statusOrder = ['pending', 'processing', 'shipped', 'delivered'];
-    const currentIdx = statusOrder.indexOf(order.orderStatus);
-    const isCancelled = order.orderStatus === 'cancelled';
+    const currentIdx = statusOrder.indexOf(order.order_status);
+    const isCancelled = order.order_status === 'cancelled';
 
     const stepsWithStatus = steps.map((step, idx) => ({
       ...step,
       status: isCancelled ? 'cancelled' : idx < currentIdx ? 'done' : idx === currentIdx ? 'active' : 'waiting',
     }));
 
+    const items = (order.order_items || []).map(i => ({
+      name: i.products?.name || i.name,
+      quantity: i.quantity,
+      price: i.price,
+    }));
+
     res.status(200).json({
       success: true,
       order: {
-        orderNumber: order.orderNumber,
-        trackingNumber: order.trackingNumber || null,
-        status: order.orderStatus,
-        paymentMethod: order.paymentMethod,
-        totalAmount: order.totalAmount,
-        itemCount: order.items.length,
-        items: order.items.map(i => ({ name: i.product?.name || i.name, quantity: i.quantity, price: i.price })),
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt,
+        orderNumber: order.order_number,
+        trackingNumber: order.tracking_number || null,
+        status: order.order_status,
+        paymentMethod: order.payment_method,
+        totalAmount: order.total_amount,
+        itemCount: items.length,
+        items,
+        createdAt: order.created_at,
+        updatedAt: order.updated_at,
       },
       steps: stepsWithStatus,
       isCancelled,
     });
   } catch (error) {
-    console.error('Track error');
+    console.error('Track error:', error);
     res.status(500).json({ error: 'Kargo takip hatası oluştu' });
   }
 }

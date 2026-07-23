@@ -1,28 +1,46 @@
 require('dotenv').config({ path: '.env.local' });
-const mongoose = require('mongoose');
+const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Supabase URL ve Service Role Key gerekli');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 async function seed() {
-  await mongoose.connect(process.env.MONGODB_URI);
-  const db = mongoose.connection.db;
+  const { data: existing } = await supabase
+    .from('admins')
+    .select('*')
+    .eq('email', 'admin@altincag.com')
+    .single();
 
-  const admin = await db.collection('admins').findOne({ email: 'admin@altincag.com' });
+  const hash = await bcrypt.hash('Admin123!', 12);
 
-  if (admin) {
-    const hash = await bcrypt.hash('Admin123!', 12);
-    await db.collection('admins').updateOne(
-      { email: 'admin@altincag.com' },
-      { $set: { password: hash } }
-    );
+  if (existing) {
+    const { error } = await supabase
+      .from('admins')
+      .update({ password: hash })
+      .eq('email', 'admin@altincag.com');
+
+    if (error) throw error;
     console.log('Admin sifresi guncellendi');
   } else {
-    const hash = await bcrypt.hash('Admin123!', 12);
-    await db.collection('admins').insertOne({
-      email: 'admin@altincag.com',
-      password: hash,
-      name: 'Admin',
-      createdAt: new Date(),
-    });
+    const { error } = await supabase
+      .from('admins')
+      .insert({
+        email: 'admin@altincag.com',
+        password: hash,
+        name: 'Admin',
+        role: 'admin',
+        is_active: true,
+      });
+
+    if (error) throw error;
     console.log('Admin olusturuldu');
   }
 

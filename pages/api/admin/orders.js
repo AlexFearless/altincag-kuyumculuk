@@ -1,12 +1,8 @@
-import dbConnect from '@/lib/mongodb';
-import Order from '@/models/Order';
-import Product from '@/models/Product';
+import { supabaseAdmin } from '@/lib/supabase';
 import { withAuth } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
 
 async function handler(req, res) {
-  await dbConnect();
-
   switch (req.method) {
     case 'GET': return handleGet(req, res);
     case 'PUT': return handlePut(req, res);
@@ -15,16 +11,69 @@ async function handler(req, res) {
   }
 }
 
+function mapOrder(o) {
+  return {
+    _id: o.id,
+    id: o.id,
+    orderNumber: o.order_number,
+    customerInfo: {
+      firstName: o.customer_first_name,
+      lastName: o.customer_last_name,
+      email: o.customer_email,
+      phone: o.customer_phone,
+      address: o.customer_address,
+      city: o.customer_city,
+      district: o.customer_district,
+      zipCode: o.customer_zip_code,
+    },
+    specialInstructions: o.special_instructions,
+    subtotal: o.subtotal,
+    shippingCost: o.shipping_cost,
+    totalAmount: o.total_amount,
+    paymentMethod: o.payment_method,
+    paymentStatus: o.payment_status,
+    orderStatus: o.order_status,
+    guestId: o.guest_id,
+    userId: o.user_id,
+    trackingNumber: o.tracking_number,
+    notes: o.notes,
+    createdAt: o.created_at,
+    updatedAt: o.updated_at,
+    items: o.order_items || [],
+  };
+}
+
 async function handleGet(req, res) {
   try {
     const { status, page = 1, limit = 20 } = req.query;
-    const query = {};
-    if (status) query.orderStatus = status;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const orders = await Order.find(query).populate('items.product', 'name images').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
-    const total = await Order.countDocuments(query);
-    res.status(200).json({ orders, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+    const safeLimit = parseInt(limit) || 20;
+    const from = (parseInt(page) - 1) * safeLimit;
+    const to = from + safeLimit - 1;
+
+    let query = supabaseAdmin.from('orders').select('*, order_items(*, products(name, images))', { count: 'exact' });
+    if (status) query = query.eq('order_status', status);
+
+    const { data: orders, count } = await query
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    const total = count || 0;
+    const mapped = (orders || []).map(o => {
+      const m = mapOrder(o);
+      m.items = (o.order_items || []).map(oi => ({
+        _id: oi.id,
+        product: oi.products ? { name: oi.products.name, images: oi.products.images } : { name: oi.name, images: oi.image ? [oi.image] : [] },
+        name: oi.name,
+        price: oi.price,
+        quantity: oi.quantity,
+        image: oi.image,
+      }));
+      return m;
+    });
+
+    res.status(200).json({ orders: mapped, total, page: parseInt(page), pages: Math.ceil(total / safeLimit) });
   } catch (error) {
+    console.error('Admin orders GET error:', error);
     res.status(500).json({ error: 'Siparişler yüklenirken hata oluştu' });
   }
 }
@@ -33,27 +82,41 @@ async function handlePut(req, res) {
   try {
     const { id, orderStatus, trackingNumber, notes } = req.body;
     if (!id) return res.status(400).json({ error: 'Sipariş ID zorunludur' });
-    const order = await Order.findById(id);
+
+    const { data: order } = await supabaseAdmin.from('orders').select('*').eq('id', id).single();
     if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı' });
 
-    const oldStatus = order.orderStatus;
-    const updateData = {};
-    if (orderStatus) updateData.orderStatus = orderStatus;
-    if (trackingNumber !== undefined) updateData.trackingNumber = trackingNumber;
-    if (notes !== undefined) updateData.notes = notes;
+    const oldStatus = order.order_status;
 
     if (orderStatus === 'cancelled' && oldStatus !== 'cancelled') {
-      for (const item of order.items) {
-        if (item.product) {
-          await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } }, { new: true });
+      const { data: items } = await supabaseAdmin.from('order_items').select('*').eq('order_id', id);
+      for (const item of (items || [])) {
+        if (item.product_id) {
+          const { data: product } = await supabaseAdmin.from('products').select('stock').eq('id', item.product_id).single();
+          if (product) {
+            await supabaseAdmin.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id);
+          }
         }
       }
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(id, updateData, { new: true }).populate('items.product', 'name images');
-    createLog({ action: `Sipariş durumu güncellendi: ${oldStatus} → ${orderStatus || 'tracking'}`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.orderNumber, oldStatus, newStatus: orderStatus }, req });
-    res.status(200).json({ success: true, order: updatedOrder });
+    const updateData = {};
+    if (orderStatus) updateData.order_status = orderStatus;
+    if (trackingNumber !== undefined) updateData.tracking_number = trackingNumber;
+    if (notes !== undefined) updateData.notes = notes;
+
+    const { data: updated } = await supabaseAdmin
+      .from('orders')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    createLog({ action: `Sipariş durumu güncellendi: ${oldStatus} → ${orderStatus || 'tracking'}`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, oldStatus, newStatus: orderStatus }, req });
+
+    res.status(200).json({ success: true, order: mapOrder(updated) });
   } catch (error) {
+    console.error('Admin orders PUT error:', error);
     res.status(500).json({ error: 'Sipariş güncellenirken hata oluştu' });
   }
 }
@@ -62,21 +125,29 @@ async function handleDelete(req, res) {
   try {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'Sipariş ID zorunludur' });
-    const order = await Order.findById(id);
+
+    const { data: order } = await supabaseAdmin.from('orders').select('*').eq('id', id).single();
     if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı' });
 
-    if (order.orderStatus !== 'cancelled') {
-      for (const item of order.items) {
-        if (item.product) {
-          await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } }, { new: true });
+    if (order.order_status !== 'cancelled') {
+      const { data: items } = await supabaseAdmin.from('order_items').select('*').eq('order_id', id);
+      for (const item of (items || [])) {
+        if (item.product_id) {
+          const { data: product } = await supabaseAdmin.from('products').select('stock').eq('id', item.product_id).single();
+          if (product) {
+            await supabaseAdmin.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id);
+          }
         }
       }
     }
 
-    await Order.findByIdAndDelete(id);
-    createLog({ action: 'Sipariş silindi', adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.orderNumber, totalAmount: order.totalAmount }, req });
+    await supabaseAdmin.from('order_items').delete().eq('order_id', id);
+    await supabaseAdmin.from('orders').delete().eq('id', id);
+
+    createLog({ action: 'Sipariş silindi', adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, totalAmount: order.total_amount }, req });
     res.status(200).json({ success: true, message: 'Sipariş silindi ve stoklar iade edildi' });
   } catch (error) {
+    console.error('Admin orders DELETE error:', error);
     res.status(500).json({ error: 'Sipariş silinirken hata oluştu' });
   }
 }
