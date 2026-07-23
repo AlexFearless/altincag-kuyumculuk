@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     let emailError = null;
     try {
       await sgMail.send({
-        from: process.env.SENDGRID_FROM_EMAIL || 'kuyumculukaltincag@gmail.com',
+        from: process.env.SENDGRID_FROM_EMAIL || 'info@altincagkuyumculuk.com',
         to: cleanEmail,
         subject: 'AltınÇağ Kuyumculuk - Yeni Doğrulama Kodu',
         html: `

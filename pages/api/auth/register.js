@@ -15,7 +15,7 @@ function generateCode() {
 
 async function sendVerificationEmail(email, name, code) {
   await sgMail.send({
-    from: process.env.SENDGRID_FROM_EMAIL || 'kuyumculukaltincag@gmail.com',
+    from: process.env.SENDGRID_FROM_EMAIL || 'info@altincagkuyumculuk.com',
     to: email,
     subject: 'AltınÇağ Kuyumculuk - E-posta Doğrulama Kodu',
     html: `

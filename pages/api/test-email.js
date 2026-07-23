@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     }
 
     const result = await sgMail.send({
-      from: process.env.SENDGRID_FROM_EMAIL || 'kuyumculukaltincag@gmail.com',
+      from: process.env.SENDGRID_FROM_EMAIL || 'info@altincagkuyumculuk.com',
       to: email,
       subject: 'AltınÇağ Kuyumculuk - Test E-postası',
       html: '<h1>Test başarılı!</h1><p>SendGrid API doğru çalışıyor. E-posta doğrulama sistemi aktif.</p>',
