@@ -81,7 +81,7 @@ export function AuthProvider({ children }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        if (!res.ok || data.error === 'Hesabınız devre dışı') {
+        if (data.error === 'Hesabınız devre dışı' || data.error === 'Geçersiz oturum') {
           logout();
           window.location.href = '/giris?reason=deactivated';
         } else if (data.user) {
