@@ -1,16 +1,16 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import { sanitize, validateEmail } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/rateLimit';
 import jwt from 'jsonwebtoken';
 
 const msgLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla mesaj. 1 dakika bekleyin.' });
 
-async function verifyAdminToken(req) {
+async function verifyAdminToken(db, req) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   try {
     const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
-    const { data: admin } = await supabaseAdmin.from('admins').select('id, name, is_active').eq('id', decoded.id).single();
+    const { data: admin } = await db.from('admins').select('id, name, is_active').eq('id', decoded.id).single();
     if (!admin || !admin.is_active) return null;
     return admin;
   } catch {
@@ -36,30 +36,33 @@ function mapMessage(m) {
 }
 
 export default async function handler(req, res) {
+  let db;
+  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
   switch (req.method) {
     case 'POST':
       if (!msgLimiter(req, res)) return;
-      return handlePost(req, res);
+      return handlePost(db, req, res);
     case 'GET': {
-      const admin = await verifyAdminToken(req);
+      const admin = await verifyAdminToken(db, req);
       if (!admin) return res.status(401).json({ error: 'Yetkilendirme başarısız' });
-      return handleGet(req, res);
+      return handleGet(db, req, res);
     }
     case 'PUT': {
-      const admin = await verifyAdminToken(req);
+      const admin = await verifyAdminToken(db, req);
       if (!admin) return res.status(401).json({ error: 'Yetkilendirme başarısız' });
-      return handlePut(req, res, admin);
+      return handlePut(db, req, res, admin);
     }
     case 'DELETE': {
-      const admin = await verifyAdminToken(req);
+      const admin = await verifyAdminToken(db, req);
       if (!admin) return res.status(401).json({ error: 'Yetkilendirme başarısız' });
-      return handleDelete(req, res);
+      return handleDelete(db, req, res);
     }
     default: return res.status(405).json({ error: 'Method not allowed' });
   }
 }
 
-async function handlePost(req, res) {
+async function handlePost(db, req, res) {
   try {
     const { name, email, phone, subject, message } = req.body;
     if (!name || !email || !subject || !message) {
@@ -78,7 +81,7 @@ async function handlePost(req, res) {
       return res.status(400).json({ error: 'Geçersiz konu' });
     }
 
-    const { error } = await supabaseAdmin.from('messages').insert({
+    const { error } = await db.from('messages').insert({
       name: sanitize(name.trim()),
       email: String(email).toLowerCase().trim(),
       phone: sanitize(String(phone || '')),
@@ -95,10 +98,10 @@ async function handlePost(req, res) {
   }
 }
 
-async function handleGet(req, res) {
+async function handleGet(db, req, res) {
   try {
     const { unread, email, category } = req.query;
-    let query = supabaseAdmin
+    let query = db
       .from('messages')
       .select('*, message_replies(*)', { count: 'exact' });
 
@@ -108,7 +111,7 @@ async function handleGet(req, res) {
 
     const { data: messages } = await query.order('created_at', { ascending: false });
 
-    const { count: unreadCount } = await supabaseAdmin
+    const { count: unreadCount } = await db
       .from('messages')
       .select('*', { count: 'exact', head: true })
       .eq('is_read', false);
@@ -126,12 +129,12 @@ async function handleGet(req, res) {
   }
 }
 
-async function handlePut(req, res, admin) {
+async function handlePut(db, req, res, admin) {
   try {
     const { id, isRead, reply, senderName, status } = req.body;
     if (!id) return res.status(400).json({ error: 'Mesaj ID gerekli' });
 
-    const { data: message } = await supabaseAdmin.from('messages').select('*').eq('id', id).single();
+    const { data: message } = await db.from('messages').select('*').eq('id', id).single();
     if (!message) return res.status(404).json({ error: 'Mesaj bulunamadı' });
 
     const updateData = {};
@@ -139,21 +142,21 @@ async function handlePut(req, res, admin) {
     if (status !== undefined && ['open', 'answered', 'closed'].includes(status)) updateData.status = status;
 
     if (Object.keys(updateData).length > 0) {
-      await supabaseAdmin.from('messages').update(updateData).eq('id', id);
+      await db.from('messages').update(updateData).eq('id', id);
     }
 
     if (reply !== undefined && String(reply).trim()) {
       if (String(reply).length > 5000) return res.status(400).json({ error: 'Yanıt çok uzun' });
-      await supabaseAdmin.from('message_replies').insert({
+      await db.from('message_replies').insert({
         message_id: id,
         sender: 'admin',
         sender_name: sanitize(admin.name || 'Admin'),
         text: sanitize(String(reply).trim()),
       });
-      await supabaseAdmin.from('messages').update({ status: 'answered' }).eq('id', id);
+      await db.from('messages').update({ status: 'answered' }).eq('id', id);
     }
 
-    const { data: updatedMessage } = await supabaseAdmin
+    const { data: updatedMessage } = await db
       .from('messages')
       .select('*, message_replies(*)')
       .eq('id', id)
@@ -166,12 +169,12 @@ async function handlePut(req, res, admin) {
   }
 }
 
-async function handleDelete(req, res) {
+async function handleDelete(db, req, res) {
   try {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'Mesaj ID gerekli' });
-    await supabaseAdmin.from('message_replies').delete().eq('message_id', id);
-    await supabaseAdmin.from('messages').delete().eq('id', id);
+    await db.from('message_replies').delete().eq('message_id', id);
+    await db.from('messages').delete().eq('id', id);
     res.status(200).json({ success: true });
   } catch (error) {
     console.error('Message DELETE error:', error);

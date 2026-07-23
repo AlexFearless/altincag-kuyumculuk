@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '@/lib/auth';
 import { rateLimit } from '@/lib/rateLimit';
@@ -13,6 +13,9 @@ export default async function handler(req, res) {
   if (!loginLimiter(req, res)) return;
 
   try {
+    let db;
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -22,7 +25,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Geçersiz giriş bilgileri' });
     }
 
-    const { data: admin } = await supabaseAdmin
+    const { data: admin } = await db
       .from('admins')
       .select('*')
       .eq('email', email.toLowerCase())
@@ -41,7 +44,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Geçersiz e-posta veya şifre' });
     }
 
-    await supabaseAdmin.from('admins').update({ last_login: new Date().toISOString() }).eq('id', admin.id);
+    await db.from('admins').update({ last_login: new Date().toISOString() }).eq('id', admin.id);
 
     const token = generateToken(admin.id);
 

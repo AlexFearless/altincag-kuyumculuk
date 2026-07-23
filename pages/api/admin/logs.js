@@ -1,10 +1,10 @@
 import jwt from 'jsonwebtoken';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 
-async function verifyAdminActive(token) {
+async function verifyAdminActive(db, token) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { data: admin } = await supabaseAdmin
+    const { data: admin } = await db
       .from('admins')
       .select('id, is_active')
       .eq('id', decoded.id)
@@ -16,10 +16,10 @@ async function verifyAdminActive(token) {
   }
 }
 
-export async function createLog({ action, adminEmail, targetType, targetId, details, req }) {
+export async function createLog(db, { action, adminEmail, targetType, targetId, details, req }) {
   try {
     const ip = req?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || '';
-    await supabaseAdmin.from('logs').insert({
+    await db.from('logs').insert({
       action,
       admin_email: adminEmail,
       target_type: targetType,
@@ -33,11 +33,14 @@ export async function createLog({ action, adminEmail, targetType, targetId, deta
 }
 
 export default async function handler(req, res) {
+  let db;
+  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Yetki gerekli' });
   }
-  const decoded = await verifyAdminActive(authHeader.split(' ')[1]);
+  const decoded = await verifyAdminActive(db, authHeader.split(' ')[1]);
   if (!decoded) return res.status(401).json({ error: 'Geçersiz veya pasif hesap' });
 
   if (req.method === 'GET') {
@@ -47,7 +50,7 @@ export default async function handler(req, res) {
       const from = (Math.max(parseInt(page) || 1, 1) - 1) * safeLimit;
       const to = from + safeLimit - 1;
 
-      const { data: logs, count } = await supabaseAdmin
+      const { data: logs, count } = await db
         .from('logs')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })

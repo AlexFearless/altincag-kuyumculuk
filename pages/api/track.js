@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { getDbPublic } from '@/lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -6,6 +6,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    let db;
+    try { db = getDbPublic(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { code } = req.query;
     if (!code || typeof code !== 'string' || code.trim().length < 3) {
       return res.status(400).json({ error: 'Geçerli bir sipariş veya kargo kodu girin' });
@@ -13,14 +16,14 @@ export default async function handler(req, res) {
 
     const trimmedCode = code.trim();
 
-    let { data: order } = await supabase
+    let { data: order } = await db
       .from('orders')
       .select('*, order_items(*, products(name, images))')
       .eq('order_number', trimmedCode.toUpperCase())
       .single();
 
     if (!order) {
-      const { data: order2 } = await supabase
+      const { data: order2 } = await db
         .from('orders')
         .select('*, order_items(*, products(name, images))')
         .eq('tracking_number', trimmedCode.toUpperCase())
@@ -28,7 +31,7 @@ export default async function handler(req, res) {
       order = order2;
     }
     if (!order) {
-      const { data: order3 } = await supabase
+      const { data: order3 } = await db
         .from('orders')
         .select('*, order_items(*, products(name, images))')
         .eq('tracking_number', trimmedCode)

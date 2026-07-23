@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import { withAuth } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
 
@@ -8,6 +8,9 @@ async function handler(req, res) {
   }
 
   try {
+    let db;
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { category, discountPercent, discountType, productIds } = req.body;
 
     if (discountPercent === undefined || isNaN(Number(discountPercent))) {
@@ -18,7 +21,7 @@ async function handler(req, res) {
     }
 
     const type = discountType === 'fake' ? 'fake' : 'real';
-    let query = supabaseAdmin.from('products').select('id, price');
+    let query = db.from('products').select('id, price');
 
     if (productIds && Array.isArray(productIds) && productIds.length > 0) {
       if (productIds.length > 100) return res.status(400).json({ error: 'En fazla 100 ürün seçilebilir' });
@@ -38,7 +41,7 @@ async function handler(req, res) {
       const discountedPrice = type === 'real' && discountPercent > 0
         ? Math.round(p.price * (1 - discountPercent / 100) * 100) / 100
         : 0;
-      return supabaseAdmin
+      return db
         .from('products')
         .update({
           discount_percent: Number(discountPercent),
@@ -54,7 +57,7 @@ async function handler(req, res) {
       ? `%${discountPercent} gerçek indirim uygulandı`
       : `%${discountPercent} sahte indirim uygulandı`;
 
-    createLog({ action, adminEmail: req.admin?.email || 'admin', targetType: 'discount', details: { category, count: products.length }, req });
+    createLog(db, { action, adminEmail: req.admin?.email || 'admin', targetType: 'discount', details: { category, count: products.length }, req });
     res.status(200).json({ success: true, message: `${products.length} ürüne %${discountPercent} ${type === 'real' ? 'gerçek' : 'sahte'} indirim uygulandı`, modifiedCount: products.length });
   } catch (error) {
     console.error('Discount error:', error);

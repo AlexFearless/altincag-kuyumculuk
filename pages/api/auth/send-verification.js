@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimit';
 import sgMail from '@sendgrid/mail';
 
@@ -18,6 +18,9 @@ export default async function handler(req, res) {
   if (!limiter(req, res)) return;
 
   try {
+    let db;
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { email } = req.body;
 
     if (!email || typeof email !== 'string') {
@@ -26,7 +29,7 @@ export default async function handler(req, res) {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    const { data: user } = await supabaseAdmin
+    const { data: user } = await db
       .from('users')
       .select('*')
       .eq('email', cleanEmail)
@@ -43,7 +46,7 @@ export default async function handler(req, res) {
     const code = generateCode();
     const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    await supabaseAdmin
+    await db
       .from('users')
       .update({ verification_code: code, verification_expires: expires })
       .eq('id', user.id);

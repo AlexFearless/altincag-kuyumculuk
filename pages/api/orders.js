@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import { sanitize } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/rateLimit';
 
@@ -21,6 +21,9 @@ export default async function handler(req, res) {
   if (!orderLimiter(req, res)) return;
 
   try {
+    let db;
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { guestId, customerInfo, specialInstructions, items, paymentMethod } = req.body;
 
     if (!customerInfo || !items || items.length === 0) {
@@ -47,7 +50,7 @@ export default async function handler(req, res) {
 
     for (const item of items) {
       if (!item.product) continue;
-      const { data: dbProduct } = await supabaseAdmin.from('products').select('*').eq('id', item.product).single();
+      const { data: dbProduct } = await db.from('products').select('*').eq('id', item.product).single();
       if (!dbProduct || !dbProduct.is_active) {
         return res.status(400).json({ error: `Ürün bulunamadı veya pasif: ${item.name || item.product}` });
       }
@@ -76,7 +79,7 @@ export default async function handler(req, res) {
     const totalAmount = subtotal + shippingCost;
     const orderNumber = generateOrderNumber();
 
-    const { data: order, error: orderError } = await supabaseAdmin
+    const { data: order, error: orderError } = await db
       .from('orders')
       .insert({
         order_number: orderNumber,
@@ -110,20 +113,20 @@ export default async function handler(req, res) {
       image: vi.image,
     }));
 
-    await supabaseAdmin.from('order_items').insert(orderItems);
+    await db.from('order_items').insert(orderItems);
 
     for (const vi of verifiedItems) {
-      const { data: p } = await supabaseAdmin.from('products').select('stock').eq('id', vi.product_id).single();
+      const { data: p } = await db.from('products').select('stock').eq('id', vi.product_id).single();
       if (p) {
-        await supabaseAdmin.from('products').update({ stock: Math.max(0, p.stock - vi.quantity) }).eq('id', vi.product_id);
+        await db.from('products').update({ stock: Math.max(0, p.stock - vi.quantity) }).eq('id', vi.product_id);
       }
     }
 
     if (guestId) {
-      const { data: cart } = await supabaseAdmin.from('carts').select('id').eq('guest_id', String(guestId)).single();
+      const { data: cart } = await db.from('carts').select('id').eq('guest_id', String(guestId)).single();
       if (cart) {
-        await supabaseAdmin.from('cart_items').delete().eq('cart_id', cart.id);
-        await supabaseAdmin.from('carts').delete().eq('id', cart.id);
+        await db.from('cart_items').delete().eq('cart_id', cart.id);
+        await db.from('carts').delete().eq('id', cart.id);
       }
     }
 

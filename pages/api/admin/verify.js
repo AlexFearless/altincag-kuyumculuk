@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -7,6 +7,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    let db;
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { token } = req.body;
     if (!token || typeof token !== 'string') {
       return res.status(400).json({ success: false, error: 'Token gerekli' });
@@ -14,7 +17,7 @@ export default async function handler(req, res) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const { data: admin } = await supabaseAdmin
+    const { data: admin } = await db
       .from('admins')
       .select('id, email, name, role, is_active')
       .eq('id', decoded.id)

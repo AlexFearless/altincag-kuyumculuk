@@ -1,26 +1,29 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import { withAuth } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
 import { sanitize } from '@/lib/sanitize';
 
 async function handler(req, res) {
+  let db;
+  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
   switch (req.method) {
-    case 'GET': return handleGet(req, res);
-    case 'POST': return handlePost(req, res);
-    case 'PUT': return handlePut(req, res);
-    case 'DELETE': return handleDelete(req, res);
+    case 'GET': return handleGet(db, req, res);
+    case 'POST': return handlePost(db, req, res);
+    case 'PUT': return handlePut(db, req, res);
+    case 'DELETE': return handleDelete(db, req, res);
     default: return res.status(405).json({ error: 'Method not allowed' });
   }
 }
 
-async function handleGet(req, res) {
+async function handleGet(db, req, res) {
   try {
     const { category, search, page = 1, limit = 50 } = req.query;
     const safeLimit = parseInt(limit) || 50;
     const from = (parseInt(page) - 1) * safeLimit;
     const to = from + safeLimit - 1;
 
-    let query = supabaseAdmin.from('products').select('*', { count: 'exact' });
+    let query = db.from('products').select('*', { count: 'exact' });
 
     if (category) query = query.eq('category', category);
     if (search) query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
@@ -59,7 +62,7 @@ async function handleGet(req, res) {
   }
 }
 
-async function handlePost(req, res) {
+async function handlePost(db, req, res) {
   try {
     const { name, description, price, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType } = req.body;
     if (!name || !price || !category) {
@@ -74,7 +77,7 @@ async function handlePost(req, res) {
 
     const filteredImages = Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.length < 2000).slice(0, 10) : [];
 
-    const { data: product, error } = await supabaseAdmin
+    const { data: product, error } = await db
       .from('products')
       .insert({
         name: sanitize(name.trim()),
@@ -95,7 +98,7 @@ async function handlePost(req, res) {
 
     if (error) throw error;
 
-    createLog({ action: 'Ürün eklendi', adminEmail: req.admin?.email || 'admin', targetType: 'product', targetId: product.id, details: { name: product.name, price: product.price, category }, req });
+    createLog(db, { action: 'Ürün eklendi', adminEmail: req.admin?.email || 'admin', targetType: 'product', targetId: product.id, details: { name: product.name, price: product.price, category }, req });
     res.status(201).json({ success: true, product: { ...product, _id: product.id, discountedPrice: product.discounted_price, isActive: product.is_active, isFeatured: product.is_featured, discountPercent: product.discount_percent, discountType: product.discount_type, createdAt: product.created_at } });
   } catch (error) {
     console.error('Admin products POST error:', error);
@@ -103,7 +106,7 @@ async function handlePost(req, res) {
   }
 }
 
-async function handlePut(req, res) {
+async function handlePut(db, req, res) {
   try {
     const { id, name, description, price, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType, isActive } = req.body;
     if (!id) return res.status(400).json({ error: 'Ürün ID zorunludur' });
@@ -125,7 +128,7 @@ async function handlePut(req, res) {
 
     if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Güncellenecek alan belirtilmedi' });
 
-    const { data: product, error } = await supabaseAdmin
+    const { data: product, error } = await db
       .from('products')
       .update(updateData)
       .eq('id', id)
@@ -134,7 +137,7 @@ async function handlePut(req, res) {
 
     if (error || !product) return res.status(404).json({ error: 'Ürün bulunamadı' });
 
-    createLog({ action: 'Ürün güncellendi', adminEmail: req.admin?.email || 'admin', targetType: 'product', targetId: id, details: { name: product.name }, req });
+    createLog(db, { action: 'Ürün güncellendi', adminEmail: req.admin?.email || 'admin', targetType: 'product', targetId: id, details: { name: product.name }, req });
     res.status(200).json({ success: true, product: { ...product, _id: product.id, discountedPrice: product.discounted_price, isActive: product.is_active, isFeatured: product.is_featured, discountPercent: product.discount_percent, discountType: product.discount_type, createdAt: product.created_at } });
   } catch (error) {
     console.error('Admin products PUT error:', error);
@@ -142,17 +145,17 @@ async function handlePut(req, res) {
   }
 }
 
-async function handleDelete(req, res) {
+async function handleDelete(db, req, res) {
   try {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'Ürün ID zorunludur' });
 
-    const { data: product } = await supabaseAdmin.from('products').select('name').eq('id', id).single();
+    const { data: product } = await db.from('products').select('name').eq('id', id).single();
     if (!product) return res.status(404).json({ error: 'Ürün bulunamadı' });
 
-    await supabaseAdmin.from('products').delete().eq('id', id);
+    await db.from('products').delete().eq('id', id);
 
-    createLog({ action: 'Ürün silindi', adminEmail: req.admin?.email || 'admin', targetType: 'product', targetId: id, details: { name: product.name }, req });
+    createLog(db, { action: 'Ürün silindi', adminEmail: req.admin?.email || 'admin', targetType: 'product', targetId: id, details: { name: product.name }, req });
     res.status(200).json({ success: true, message: 'Ürün başarıyla silindi' });
   } catch (error) {
     console.error('Admin products DELETE error:', error);

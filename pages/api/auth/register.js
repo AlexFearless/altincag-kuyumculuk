@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { rateLimit } from '@/lib/rateLimit';
@@ -45,6 +45,9 @@ export default async function handler(req, res) {
   if (!limiter(req, res)) return;
 
   try {
+    let db;
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { name, email, password, phone } = req.body;
 
     if (!name || !email || !password || !phone) {
@@ -65,7 +68,7 @@ export default async function handler(req, res) {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    const { data: existingUser } = await supabaseAdmin
+    const { data: existingUser } = await db
       .from('users')
       .select('id')
       .eq('email', cleanEmail)
@@ -80,7 +83,7 @@ export default async function handler(req, res) {
     const verificationExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const { data: user, error: insertError } = await supabaseAdmin
+    const { data: user, error: insertError } = await db
       .from('users')
       .insert({
         name: sanitize(name.trim()),

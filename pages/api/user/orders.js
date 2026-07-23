@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
@@ -7,6 +7,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    let db;
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
@@ -15,7 +18,7 @@ export default async function handler(req, res) {
     let email;
     try {
       const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
-      const { data: user } = await supabaseAdmin
+      const { data: user } = await db
         .from('users')
         .select('email, is_active')
         .eq('id', decoded.id)
@@ -28,7 +31,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Geçersiz oturum' });
     }
 
-    const { data: orders } = await supabaseAdmin
+    const { data: orders } = await db
       .from('orders')
       .select('*, order_items(*, products(name, images))')
       .eq('customer_email', email)

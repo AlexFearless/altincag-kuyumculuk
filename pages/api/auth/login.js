@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { rateLimit } from '@/lib/rateLimit';
@@ -13,6 +13,9 @@ export default async function handler(req, res) {
   if (!limiter(req, res)) return;
 
   try {
+    let db;
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -24,7 +27,7 @@ export default async function handler(req, res) {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    const { data: user } = await supabaseAdmin
+    const { data: user } = await db
       .from('users')
       .select('*')
       .eq('email', cleanEmail)
@@ -52,7 +55,7 @@ export default async function handler(req, res) {
     }
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '';
-    await supabaseAdmin.from('users').update({ last_login_ip: ip }).eq('id', user.id);
+    await db.from('users').update({ last_login_ip: ip }).eq('id', user.id);
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '5y' });
 

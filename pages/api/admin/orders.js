@@ -1,12 +1,15 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import { withAuth } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
 
 async function handler(req, res) {
+  let db;
+  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
   switch (req.method) {
-    case 'GET': return handleGet(req, res);
-    case 'PUT': return handlePut(req, res);
-    case 'DELETE': return handleDelete(req, res);
+    case 'GET': return handleGet(db, req, res);
+    case 'PUT': return handlePut(db, req, res);
+    case 'DELETE': return handleDelete(db, req, res);
     default: return res.status(405).json({ error: 'Method not allowed' });
   }
 }
@@ -43,14 +46,14 @@ function mapOrder(o) {
   };
 }
 
-async function handleGet(req, res) {
+async function handleGet(db, req, res) {
   try {
     const { status, page = 1, limit = 20 } = req.query;
     const safeLimit = parseInt(limit) || 20;
     const from = (parseInt(page) - 1) * safeLimit;
     const to = from + safeLimit - 1;
 
-    let query = supabaseAdmin.from('orders').select('*, order_items(*, products(name, images))', { count: 'exact' });
+    let query = db.from('orders').select('*, order_items(*, products(name, images))', { count: 'exact' });
     if (status) query = query.eq('order_status', status);
 
     const { data: orders, count } = await query
@@ -78,23 +81,23 @@ async function handleGet(req, res) {
   }
 }
 
-async function handlePut(req, res) {
+async function handlePut(db, req, res) {
   try {
     const { id, orderStatus, trackingNumber, notes } = req.body;
     if (!id) return res.status(400).json({ error: 'Sipariş ID zorunludur' });
 
-    const { data: order } = await supabaseAdmin.from('orders').select('*').eq('id', id).single();
+    const { data: order } = await db.from('orders').select('*').eq('id', id).single();
     if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı' });
 
     const oldStatus = order.order_status;
 
     if (orderStatus === 'cancelled' && oldStatus !== 'cancelled') {
-      const { data: items } = await supabaseAdmin.from('order_items').select('*').eq('order_id', id);
+      const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
       for (const item of (items || [])) {
         if (item.product_id) {
-          const { data: product } = await supabaseAdmin.from('products').select('stock').eq('id', item.product_id).single();
+          const { data: product } = await db.from('products').select('stock').eq('id', item.product_id).single();
           if (product) {
-            await supabaseAdmin.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id);
+            await db.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id);
           }
         }
       }
@@ -105,14 +108,14 @@ async function handlePut(req, res) {
     if (trackingNumber !== undefined) updateData.tracking_number = trackingNumber;
     if (notes !== undefined) updateData.notes = notes;
 
-    const { data: updated } = await supabaseAdmin
+    const { data: updated } = await db
       .from('orders')
       .update(updateData)
       .eq('id', id)
       .select()
       .single();
 
-    createLog({ action: `Sipariş durumu güncellendi: ${oldStatus} → ${orderStatus || 'tracking'}`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, oldStatus, newStatus: orderStatus }, req });
+    createLog(db, { action: `Sipariş durumu güncellendi: ${oldStatus} → ${orderStatus || 'tracking'}`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, oldStatus, newStatus: orderStatus }, req });
 
     res.status(200).json({ success: true, order: mapOrder(updated) });
   } catch (error) {
@@ -121,30 +124,30 @@ async function handlePut(req, res) {
   }
 }
 
-async function handleDelete(req, res) {
+async function handleDelete(db, req, res) {
   try {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'Sipariş ID zorunludur' });
 
-    const { data: order } = await supabaseAdmin.from('orders').select('*').eq('id', id).single();
+    const { data: order } = await db.from('orders').select('*').eq('id', id).single();
     if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı' });
 
     if (order.order_status !== 'cancelled') {
-      const { data: items } = await supabaseAdmin.from('order_items').select('*').eq('order_id', id);
+      const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
       for (const item of (items || [])) {
         if (item.product_id) {
-          const { data: product } = await supabaseAdmin.from('products').select('stock').eq('id', item.product_id).single();
+          const { data: product } = await db.from('products').select('stock').eq('id', item.product_id).single();
           if (product) {
-            await supabaseAdmin.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id);
+            await db.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id);
           }
         }
       }
     }
 
-    await supabaseAdmin.from('order_items').delete().eq('order_id', id);
-    await supabaseAdmin.from('orders').delete().eq('id', id);
+    await db.from('order_items').delete().eq('order_id', id);
+    await db.from('orders').delete().eq('id', id);
 
-    createLog({ action: 'Sipariş silindi', adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, totalAmount: order.total_amount }, req });
+    createLog(db, { action: 'Sipariş silindi', adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, totalAmount: order.total_amount }, req });
     res.status(200).json({ success: true, message: 'Sipariş silindi ve stoklar iade edildi' });
   } catch (error) {
     console.error('Admin orders DELETE error:', error);

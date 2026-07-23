@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { getDbPublic } from '@/lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -6,6 +6,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    let db;
+    try { db = getDbPublic(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { q, limit = 10 } = req.query;
 
     if (typeof q !== 'string') {
@@ -17,7 +20,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ products: [] });
     }
 
-    const { data: products } = await supabase
+    const { data: products } = await db
       .from('products')
       .select('name, slug, price, discounted_price, images, category, discount_percent, discount_type')
       .eq('is_active', true)

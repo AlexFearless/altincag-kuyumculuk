@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
 import { rateLimit } from '@/lib/rateLimit';
 
@@ -12,6 +12,9 @@ export default async function handler(req, res) {
   if (!limiter(req, res)) return;
 
   try {
+    let db;
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { email, code } = req.body;
 
     if (!email || !code) {
@@ -21,7 +24,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Geçersiz bilgiler' });
     }
 
-    const { data: user } = await supabaseAdmin
+    const { data: user } = await db
       .from('users')
       .select('*')
       .eq('email', email.toLowerCase().trim())
@@ -47,7 +50,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Geçersiz doğrulama kodu' });
     }
 
-    await supabaseAdmin
+    await db
       .from('users')
       .update({
         email_verified: true,

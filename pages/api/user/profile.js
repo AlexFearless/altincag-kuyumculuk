@@ -1,8 +1,11 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
 import { sanitize, validateEmail, validatePhone } from '@/lib/sanitize';
 
 export default async function handler(req, res) {
+  let db;
+  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
   if (req.method === 'GET') {
     try {
       const authHeader = req.headers.authorization;
@@ -11,7 +14,7 @@ export default async function handler(req, res) {
       }
       const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
 
-      const { data: user } = await supabaseAdmin
+      const { data: user } = await db
         .from('users')
         .select('id, name, email, phone, address, is_active')
         .eq('id', decoded.id)
@@ -68,7 +71,7 @@ export default async function handler(req, res) {
 
     if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Güncellenecek alan yok' });
 
-    const { data: user, error } = await supabaseAdmin
+    const { data: user, error } = await db
       .from('users')
       .update(updateData)
       .eq('id', decoded.id)

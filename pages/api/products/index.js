@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { getDbPublic } from '@/lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -6,12 +6,15 @@ export default async function handler(req, res) {
   }
 
   try {
+    let db;
+    try { db = getDbPublic(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
     const { category, featured, limit = 50, page = 1 } = req.query;
     const safeLimit = parseInt(limit) || 50;
     const from = (parseInt(page) - 1) * safeLimit;
     const to = from + safeLimit - 1;
 
-    let query = supabase.from('products').select('*', { count: 'exact' }).eq('is_active', true);
+    let query = db.from('products').select('*', { count: 'exact' }).eq('is_active', true);
 
     if (category) query = query.eq('category', category);
     if (featured === 'true') query = query.eq('is_featured', true);
