@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS coupons (
   used_count INTEGER DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
   expires_at TIMESTAMPTZ,
+  applicable_categories TEXT[] DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );

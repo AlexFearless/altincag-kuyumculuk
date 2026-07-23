@@ -438,7 +438,7 @@ export default function AdminProducts() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     Kategori *
@@ -474,22 +474,6 @@ export default function AdminProducts() {
                     min="0"
                     max="100"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-earth-700 mb-1">
-                    İndirim Tipi
-                  </label>
-                  <select
-                    value={formData.discountType}
-                    onChange={(e) =>
-                      setFormData({ ...formData, discountType: e.target.value })
-                    }
-                    className="input-field"
-                  >
-                    <option value="">Yok</option>
-                    <option value="real">Gerçek İndirim</option>
-                    <option value="fake">Sahte İndirim</option>
-                  </select>
                 </div>
               </div>
 
@@ -544,7 +528,7 @@ export default function AdminProducts() {
 
               <div>
                 <label className="block text-sm font-medium text-earth-700 mb-1">
-                  Görseller (Base64)
+                  Görseller
                 </label>
                 <input
                   type="file"
@@ -557,9 +541,12 @@ export default function AdminProducts() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 border border-dashed border-earth-300 rounded-sm text-sm text-earth-500 hover:border-gold-500 hover:text-gold-600 transition-colors w-full"
+                  className="px-4 py-6 border-2 border-dashed border-earth-300 rounded-lg text-sm text-earth-500 hover:border-gold-500 hover:text-gold-600 transition-colors w-full flex flex-col items-center gap-2"
                 >
-                  + Görsel Yükle
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  Görsel Ekle
                 </button>
                 {formData.images.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">

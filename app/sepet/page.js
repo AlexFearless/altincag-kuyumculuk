@@ -21,6 +21,10 @@ export default function CartPage() {
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('paytr');
   const [testMode, setTestMode] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
   const [cardInfo, setCardInfo] = useState({
     cardName: '',
     cardNumber: '',
@@ -42,7 +46,38 @@ export default function CartPage() {
   }, [user]);
 
   const shippingCost = 0;
-  const totalAmount = getTotal() + shippingCost;
+  const discountAmount = couponDiscount?.discount || 0;
+  const totalAmount = Math.max(0, getTotal() + shippingCost - discountAmount);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError('');
+    setCouponDiscount(null);
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode, orderAmount: getTotal(), cartCategories: [...new Set(items.map(i => i.product?.category).filter(Boolean))] }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCouponDiscount(data.coupon);
+      } else {
+        setCouponError(data.error || 'Geçersiz kupon');
+      }
+    } catch {
+      setCouponError('Kupon doğrulanamadı');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode('');
+    setCouponDiscount(null);
+    setCouponError('');
+  };
 
   const handleQuantityChange = (productId, newQuantity) => {
     if (newQuantity < 1) {
@@ -306,6 +341,52 @@ export default function CartPage() {
                   <span className="text-earth-500">Kargo</span>
                   <span className="text-green-600">Ücretsiz Kargo</span>
                 </div>
+
+                <div className="border-t border-earth-200 pt-3">
+                  {!couponDiscount ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder="Kupon kodu"
+                        className="flex-1 px-3 py-2 border border-earth-200 rounded-sm text-sm focus:outline-none focus:border-gold-500"
+                        onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={couponLoading || !couponCode.trim()}
+                        className="px-3 py-2 bg-earth-100 text-earth-700 rounded-sm text-sm font-medium hover:bg-earth-200 disabled:opacity-50"
+                      >
+                        {couponLoading ? '...' : 'Uygula'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-sm px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                        <span className="text-sm font-medium text-green-700">{couponDiscount.code}</span>
+                        <span className="text-xs text-green-600">(-{discountAmount.toLocaleString('tr-TR')} TL)</span>
+                      </div>
+                      <button onClick={handleRemoveCoupon} className="text-green-600 hover:text-green-800">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                  {couponError && <p className="text-xs text-red-500 mt-1">{couponError}</p>}
+                </div>
+
+                {couponDiscount && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-600">İndirim</span>
+                    <span className="text-green-600">-{discountAmount.toLocaleString('tr-TR')} TL</span>
+                  </div>
+                )}
                 <div className="border-t border-earth-200 pt-3 flex justify-between">
                   <span className="font-semibold text-earth-800">Toplam</span>
                   <span className="font-bold text-lg text-gold-600">

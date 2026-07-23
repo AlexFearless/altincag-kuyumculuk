@@ -67,6 +67,9 @@ export default function AdminAnnouncements() {
     fetchAnnouncements();
   }
 
+  const bgColors = ['#B8860B', '#1E3A5F', '#7C2D12', '#065F46', '#7C3AED', '#DC2626', '#000000', '#1D4ED8', '#059669', '#D97706'];
+  const textColors = ['#FFFFFF', '#000000', '#FDE68A', '#FCA5A5', '#A7F3D0', '#F5F5DC', '#FED7AA'];
+
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-stone-50"><div className="text-earth-500">Yükleniyor...</div></div>;
 
   return (
@@ -129,34 +132,33 @@ export default function AdminAnnouncements() {
                   <label className="block text-sm font-medium text-earth-700 mb-1">Mesaj</label>
                   <textarea value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-earth-200 rounded-lg focus:ring-2 focus:ring-gold-500 outline-none resize-none" placeholder="Duyuru mesajınız..." />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-earth-700 mb-1">Arka Plan Rengi</label>
-                    <div className="flex gap-2">
-                      {['#B8860B', '#1E3A5F', '#7C2D12', '#065F46', '#7C3AED', '#000000'].map(c => (
-                        <button key={c} onClick={() => setForm(f => ({ ...f, bgColor: c }))} className={`w-8 h-8 rounded-lg border-2 ${form.bgColor === c ? 'border-earth-800' : 'border-transparent'}`} style={{ backgroundColor: c }} />
-                      ))}
-                      <input type="color" value={form.bgColor} onChange={e => setForm(f => ({ ...f, bgColor: e.target.value }))} className="w-8 h-8 rounded-lg cursor-pointer" />
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">Arka Plan Rengi</label>
+                  <div className="flex flex-wrap gap-2">
+                    {bgColors.map(c => (
+                      <button key={c} onClick={() => setForm(f => ({ ...f, bgColor: c }))} className={`w-8 h-8 rounded-lg border-2 transition-all ${form.bgColor === c ? 'border-earth-800 scale-110 ring-2 ring-earth-300' : 'border-transparent hover:scale-105'}`} style={{ backgroundColor: c }} />
+                    ))}
+                    <input type="color" value={form.bgColor} onChange={e => setForm(f => ({ ...f, bgColor: e.target.value }))} className="w-8 h-8 rounded-lg cursor-pointer" title="Özel renk seç" />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-earth-700 mb-1">Yazı Rengi</label>
-                    <div className="flex gap-2">
-                      {['#FFFFFF', '#000000', '#B8860B', '#F5F5DC'].map(c => (
-                        <button key={c} onClick={() => setForm(f => ({ ...f, textColor: c }))} className={`w-8 h-8 rounded-lg border-2 ${form.textColor === c ? 'border-earth-800' : 'border-transparent'}`} style={{ backgroundColor: c }} />
-                      ))}
-                    </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">Yazı Rengi</label>
+                  <div className="flex flex-wrap gap-2">
+                    {textColors.map(c => (
+                      <button key={c} onClick={() => setForm(f => ({ ...f, textColor: c }))} className={`w-8 h-8 rounded-lg border-2 transition-all ${form.textColor === c ? 'border-earth-800 scale-110 ring-2 ring-earth-300' : 'border-transparent hover:scale-105'}`} style={{ backgroundColor: c, border: c === '#000000' ? '2px solid #ccc' : undefined }} />
+                    ))}
+                    <input type="color" value={form.textColor} onChange={e => setForm(f => ({ ...f, textColor: e.target.value }))} className="w-8 h-8 rounded-lg cursor-pointer" title="Özel renk seç" />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} className="rounded" />
                   <label className="text-sm text-earth-700">Aktif (sitede görünsün)</label>
                 </div>
-                <div className="bg-stone-50 rounded-lg p-3">
-                  <p className="text-xs text-earth-400 mb-2">Önizleme:</p>
-                  <div className="rounded-lg px-4 py-2 text-center" style={{ backgroundColor: form.bgColor, color: form.textColor }}>
-                    <strong>{form.title || 'Duyuru Başlığı'}</strong>
-                    <p className="text-sm opacity-90">{form.message || 'Duyuru mesajı burada görünecek...'}</p>
+                <div className="bg-stone-50 rounded-lg p-4">
+                  <p className="text-xs text-earth-400 mb-2 font-medium">Önizleme (10 saniye görünecek):</p>
+                  <div className="rounded-xl px-6 py-4 text-center shadow-md" style={{ backgroundColor: form.bgColor, color: form.textColor }}>
+                    <p className="text-lg font-bold">{form.title || 'Duyuru Başlığı'}</p>
+                    <p className="text-sm opacity-90 mt-1">{form.message || 'Duyuru mesajı burada görünecek...'}</p>
                   </div>
                 </div>
               </div>

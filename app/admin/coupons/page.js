@@ -12,6 +12,17 @@ export default function AdminCoupons() {
   const [message, setMessage] = useState({ text: '', type: '' });
   const router = useRouter();
 
+  const categories = [
+    { value: '', label: 'Tüm Kategoriler' },
+    { value: 'yuzuk', label: 'Yüzük' },
+    { value: 'kolye', label: 'Kolye' },
+    { value: 'bileklik', label: 'Bileklik' },
+    { value: 'kelepce', label: 'Kelepçe' },
+    { value: 'kupe', label: 'Küpe' },
+    { value: 'zincir', label: 'Zincir' },
+    { value: 'set', label: 'Set' },
+  ];
+
   const [formData, setFormData] = useState({
     code: '',
     description: '',
@@ -21,6 +32,7 @@ export default function AdminCoupons() {
     maxUses: '',
     expiresAt: '',
     isActive: true,
+    applicableCategories: [],
   });
 
   const getToken = () => localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
@@ -60,6 +72,7 @@ export default function AdminCoupons() {
       maxUses: '',
       expiresAt: '',
       isActive: true,
+      applicableCategories: [],
     });
   };
 
@@ -144,6 +157,7 @@ export default function AdminCoupons() {
       maxUses: coupon.maxUses || '',
       expiresAt: coupon.expiresAt ? coupon.expiresAt.split('T')[0] : '',
       isActive: coupon.isActive,
+      applicableCategories: coupon.applicableCategories || [],
     });
     setShowModal(true);
   };
@@ -391,6 +405,30 @@ export default function AdminCoupons() {
                   className="w-4 h-4 text-gold-500 rounded"
                 />
                 <label htmlFor="isActive" className="ml-2 text-sm text-earth-700">Aktif</label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-earth-700 mb-1">Geçerli Kategoriler</label>
+                <p className="text-xs text-earth-400 mb-2">Hiçbiri seçilmezse tüm kategorilerde geçerli olur</p>
+                <div className="flex flex-wrap gap-2">
+                  {categories.filter(c => c.value).map(cat => (
+                    <label key={cat.value} className={`px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors border ${formData.applicableCategories.includes(cat.value) ? 'bg-gold-500 text-white border-gold-500' : 'bg-white text-earth-600 border-earth-200 hover:border-gold-400'}`}>
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={formData.applicableCategories.includes(cat.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData(f => ({ ...f, applicableCategories: [...f.applicableCategories, cat.value] }));
+                          } else {
+                            setFormData(f => ({ ...f, applicableCategories: f.applicableCategories.filter(c => c !== cat.value) }));
+                          }
+                        }}
+                      />
+                      {cat.label}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="flex justify-end space-x-3 pt-4 border-t">

@@ -28,6 +28,7 @@ function mapCoupon(c) {
     usedCount: c.used_count,
     isActive: c.is_active,
     expiresAt: c.expires_at,
+    applicableCategories: c.applicable_categories || [],
     createdAt: c.created_at,
   };
 }
@@ -56,7 +57,7 @@ async function handleGet(db, req, res) {
 
 async function handlePost(db, req, res) {
   try {
-    const { code, description, discountType, discountValue, minOrderAmount, maxUses, isActive, expiresAt } = req.body;
+    const { code, description, discountType, discountValue, minOrderAmount, maxUses, isActive, expiresAt, applicableCategories } = req.body;
     if (!code || !discountType || discountValue === undefined) {
       return res.status(400).json({ error: 'Kupon kodu, indirim tipi ve indirim değeri zorunludur' });
     }
@@ -81,6 +82,7 @@ async function handlePost(db, req, res) {
         max_uses: Number(maxUses) || null,
         is_active: isActive !== false,
         expires_at: expiresAt || null,
+        applicable_categories: applicableCategories || [],
       })
       .select()
       .single();
@@ -97,7 +99,7 @@ async function handlePost(db, req, res) {
 
 async function handlePut(db, req, res) {
   try {
-    const { id, code, description, discountType, discountValue, minOrderAmount, maxUses, isActive, expiresAt } = req.body;
+    const { id, code, description, discountType, discountValue, minOrderAmount, maxUses, isActive, expiresAt, applicableCategories } = req.body;
     if (!id) return res.status(400).json({ error: 'Kupon ID zorunludur' });
 
     const updateData = {};
@@ -115,6 +117,7 @@ async function handlePut(db, req, res) {
     if (maxUses !== undefined) updateData.max_uses = Number(maxUses) || null;
     if (isActive !== undefined) updateData.is_active = !!isActive;
     if (expiresAt !== undefined) updateData.expires_at = expiresAt || null;
+    if (applicableCategories !== undefined) updateData.applicable_categories = applicableCategories;
 
     if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Güncellenecek alan belirtilmedi' });
 
