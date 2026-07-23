@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function AnnouncementBanner() {
   const [announcement, setAnnouncement] = useState(null);
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
+    if (pathname.startsWith('/admin')) return;
     async function fetchAnnouncement() {
       try {
         const res = await fetch('/api/announcements');

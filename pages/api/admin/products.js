@@ -75,7 +75,7 @@ async function handlePost(db, req, res) {
       return res.status(400).json({ error: 'Geçersiz fiyat' });
     }
 
-    const filteredImages = Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.length < 2000).slice(0, 10) : [];
+    const filteredImages = Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.length < 500000).slice(0, 10) : [];
 
     const { data: product, error } = await db
       .from('products')
@@ -116,7 +116,7 @@ async function handlePut(db, req, res) {
     if (description !== undefined) updateData.description = sanitize(String(description));
     if (price !== undefined) { if (isNaN(Number(price)) || Number(price) < 0) return res.status(400).json({ error: 'Geçersiz fiyat' }); updateData.price = Number(price); }
     if (category !== undefined) updateData.category = category;
-    if (images !== undefined) updateData.images = Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.length < 2000).slice(0, 10) : [];
+    if (images !== undefined) updateData.images = Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.length < 500000).slice(0, 10) : [];
     if (stock !== undefined) updateData.stock = Math.max(0, Number(stock) || 0);
     if (karat !== undefined) updateData.karat = karat;
     if (weight !== undefined) updateData.weight = Number(weight) || 0;

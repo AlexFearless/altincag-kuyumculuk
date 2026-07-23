@@ -32,6 +32,8 @@ function mapOrder(o) {
     specialInstructions: o.special_instructions,
     subtotal: o.subtotal,
     shippingCost: o.shipping_cost,
+    discountAmount: o.discount_amount || 0,
+    couponCode: o.coupon_code || '',
     totalAmount: o.total_amount,
     paymentMethod: o.payment_method,
     paymentStatus: o.payment_status,

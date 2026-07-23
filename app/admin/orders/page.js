@@ -232,9 +232,16 @@ export default function AdminOrders() {
                       >
                         {statusLabels[order.orderStatus]}
                       </span>
-                      <span className="font-bold text-earth-800">
-                        {order.totalAmount.toLocaleString('tr-TR')} TL
-                      </span>
+                      <div className="text-right">
+                        {order.couponCode && (
+                          <p className="text-xs text-green-600 font-medium">
+                            {order.couponCode} · -{order.discountAmount?.toLocaleString('tr-TR') || '0'} TL
+                          </p>
+                        )}
+                        <span className="font-bold text-earth-800">
+                          {order.totalAmount.toLocaleString('tr-TR')} TL
+                        </span>
+                      </div>
                       <button
                         onClick={() => setSelectedOrder(order)}
                         className="text-gold-600 hover:text-gold-700 text-sm font-medium"
@@ -375,6 +382,16 @@ export default function AdminOrders() {
                   <span className="text-earth-500">Kargo</span>
                   <span>{selectedOrder.shippingCost?.toLocaleString('tr-TR')} TL</span>
                 </div>
+                {selectedOrder.couponCode && (
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-green-600 font-medium">
+                      Kupon: {selectedOrder.couponCode}
+                    </span>
+                    <span className="text-green-600 font-medium">
+                      -{selectedOrder.discountAmount?.toLocaleString('tr-TR')} TL
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-lg">
                   <span>Toplam</span>
                   <span className="text-gold-600">

@@ -127,6 +127,8 @@ export default function CartPage() {
           shippingCost,
           totalAmount,
           paymentMethod: finalPaymentMethod,
+          couponCode: couponDiscount?.code || '',
+          discountAmount: discountAmount,
         }),
       });
 
@@ -159,6 +161,11 @@ export default function CartPage() {
           <p className="text-sm text-earth-400 mb-6">
             Toplam: {orderSuccess.totalAmount.toLocaleString('tr-TR')} TL
           </p>
+          {couponDiscount && (
+            <p className="text-sm text-green-600 mb-2">
+              Kupon: {couponDiscount.code} (-{discountAmount.toLocaleString('tr-TR')} TL)
+            </p>
+          )}
           {paymentMethod === 'havale' && (
             <div className="bg-gold-50 border border-gold-200 rounded-lg p-4 mb-6 text-left">
               <p className="text-sm font-semibold text-earth-800 mb-2">Havale Bilgileri:</p>

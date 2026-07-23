@@ -3,6 +3,10 @@
 -- Supabase Dashboard > SQL Editor'da çalıştır
 -- ============================================
 
+-- Mevcut orders tablosuna kupon alanları ekle
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS coupon_code TEXT DEFAULT '';
+
 -- 1. COUPONS tablosu
 CREATE TABLE IF NOT EXISTS coupons (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

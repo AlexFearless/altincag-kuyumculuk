@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     let db;
     try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
 
-    const { guestId, customerInfo, specialInstructions, items, paymentMethod } = req.body;
+    const { guestId, customerInfo, specialInstructions, items, paymentMethod, couponCode, discountAmount } = req.body;
 
     if (!customerInfo || !items || items.length === 0) {
       return res.status(400).json({ error: 'Sipariş bilgileri eksik' });
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
     }
 
     const shippingCost = 0;
-    const totalAmount = subtotal + shippingCost;
+    const totalAmount = Math.max(0, subtotal + shippingCost - (Number(discountAmount) || 0));
     const orderNumber = generateOrderNumber();
 
     const { data: order, error: orderError } = await db
@@ -94,6 +94,8 @@ export default async function handler(req, res) {
         special_instructions: sanitize(String(specialInstructions || '').substring(0, 500)),
         subtotal,
         shipping_cost: shippingCost,
+        discount_amount: Number(discountAmount) || 0,
+        coupon_code: sanitize(String(couponCode || '')),
         total_amount: totalAmount,
         payment_method: ['paytr', 'havale', 'kapida'].includes(paymentMethod) ? paymentMethod : 'paytr',
         guest_id: String(guestId || ''),

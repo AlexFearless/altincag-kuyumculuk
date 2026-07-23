@@ -43,7 +43,9 @@ export default function AccountPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch(`/api/user/orders?email=${user.email}`);
+      const res = await fetch('/api/user/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setOrders(data.orders || []);
     } catch (error) {
@@ -231,7 +233,14 @@ export default function AccountPage() {
                           ))}
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t border-earth-100">
-                          <p className="text-xs text-earth-400">Toplam</p>
+                          <div>
+                            <p className="text-xs text-earth-400">Ara Toplam: {order.subtotal?.toLocaleString('tr-TR')} TL</p>
+                            {order.couponCode && (
+                              <p className="text-xs text-green-600 font-medium">
+                                Kupon: {order.couponCode} · -{order.discountAmount?.toLocaleString('tr-TR') || '0'} TL
+                              </p>
+                            )}
+                          </div>
                           <p className="font-bold text-gold-600">{order.totalAmount.toLocaleString('tr-TR')} TL</p>
                         </div>
                         {order.specialInstructions && (
