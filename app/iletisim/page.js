@@ -98,7 +98,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold text-earth-800">E-posta</h3>
                     <p className="text-earth-500 text-sm mt-1">
-                      info@altincagkuyumculuk.com
+                      kuyumculukaltincag@gmail.com
                     </p>
                   </div>
                 </div>

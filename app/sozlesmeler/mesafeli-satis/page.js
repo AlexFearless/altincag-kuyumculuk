@@ -30,7 +30,7 @@ export default function DistanceSalesContract() {
                 <strong>Satıcı:</strong> Altınçag Kuyumculuk<br />
                 Adres: Çağlayan, Vatan Cd. No:55/C, 34403 Kağıthane/İstanbul<br />
                 Telefon: (0212) 232 22 12<br />
-                E-posta: info@altincagkuyumculuk.com
+                E-posta: kuyumculukaltincag@gmail.com
               </p>
             </section>
 

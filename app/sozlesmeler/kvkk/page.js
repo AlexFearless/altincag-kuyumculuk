@@ -68,7 +68,7 @@ export default function KVKK() {
                 5. İletişim
               </h2>
               <p>
-                KVKK kapsamındaki taleplerinizi info@altincagkuyumculuk.com
+                KVKK kapsamındaki taleplerinizi kuyumculukaltincag@gmail.com
                 adresine e-posta göndererek iletebilirsiniz.
               </p>
             </section>
