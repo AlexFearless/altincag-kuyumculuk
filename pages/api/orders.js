@@ -124,6 +124,13 @@ export default async function handler(req, res) {
       }
     }
 
+    if (couponCode && discountAmount > 0) {
+      const { data: coupon } = await db.from('coupons').select('id, used_count').ilike('code', couponCode).single();
+      if (coupon) {
+        await db.from('coupons').update({ used_count: (coupon.used_count || 0) + 1 }).eq('id', coupon.id);
+      }
+    }
+
     if (guestId) {
       const { data: cart } = await db.from('carts').select('id').eq('guest_id', String(guestId)).single();
       if (cart) {

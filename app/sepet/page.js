@@ -158,14 +158,22 @@ export default function CartPage() {
           <p className="text-earth-500 mb-4">
             Sipariş numaranız: <span className="font-semibold">{orderSuccess.orderNumber}</span>
           </p>
-          <p className="text-sm text-earth-400 mb-6">
-            Toplam: {orderSuccess.totalAmount.toLocaleString('tr-TR')} TL
+          <p className="text-sm text-earth-400 mb-4">
+            Sipariş numaranız: <span className="font-semibold">{orderSuccess.orderNumber}</span>
           </p>
           {couponDiscount && (
-            <p className="text-sm text-green-600 mb-2">
-              Kupon: {couponDiscount.code} (-{discountAmount.toLocaleString('tr-TR')} TL)
-            </p>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-green-700 font-medium">
+                Kupon: {couponDiscount.code}
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                İndirim: -{discountAmount.toLocaleString('tr-TR')} TL
+              </p>
+            </div>
           )}
+          <p className="text-sm text-earth-400 mb-6">
+            Toplam: <span className="font-bold text-gold-600 text-lg">{orderSuccess.totalAmount.toLocaleString('tr-TR')} TL</span>
+          </p>
           {paymentMethod === 'havale' && (
             <div className="bg-gold-50 border border-gold-200 rounded-lg p-4 mb-6 text-left">
               <p className="text-sm font-semibold text-earth-800 mb-2">Havale Bilgileri:</p>

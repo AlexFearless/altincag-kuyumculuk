@@ -402,25 +402,6 @@ export default function AdminOrders() {
 
               <div>
                 <h3 className="font-semibold text-earth-800 mb-2">Sipariş Durumu</h3>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-earth-700 mb-1">Kargo Takip Numarası</label>
-                  <input
-                    type="text"
-                    defaultValue={selectedOrder.trackingNumber || ''}
-                    onBlur={(e) => {
-                      fetch('/api/admin/orders', {
-                        method: 'PUT',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          Authorization: `Bearer ${localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token')}`,
-                        },
-                        body: JSON.stringify({ id: selectedOrder._id, trackingNumber: e.target.value }),
-                      });
-                    }}
-                    className="input-field"
-                    placeholder="Kargo takip numarası girin"
-                  />
-                </div>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(statusLabels).map(([value, label]) => (
                     <button
