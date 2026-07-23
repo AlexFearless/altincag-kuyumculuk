@@ -59,15 +59,25 @@ ALTER TABLE order_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Service role full access" ON coupons;
+DROP POLICY IF EXISTS "Service role full access" ON order_notes;
+DROP POLICY IF EXISTS "Service role full access" ON announcements;
+DROP POLICY IF EXISTS "Service role full access" ON notifications;
+
 CREATE POLICY "Service role full access" ON coupons FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Service role full access" ON order_notes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Service role full access" ON announcements FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Service role full access" ON notifications FOR ALL USING (true) WITH CHECK (true);
 
--- Public okuma politikaları
+DROP POLICY IF EXISTS "Public read active coupons" ON coupons;
+DROP POLICY IF EXISTS "Public read active announcements" ON announcements;
+
 CREATE POLICY "Public read active coupons" ON coupons FOR SELECT USING (is_active = true);
 CREATE POLICY "Public read active announcements" ON announcements FOR SELECT USING (is_active = true);
 
 -- Trigger'lar
+DROP TRIGGER IF EXISTS update_coupons_updated_at ON coupons;
 CREATE TRIGGER update_coupons_updated_at BEFORE UPDATE ON coupons FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_announcements_updated_at ON announcements;
 CREATE TRIGGER update_announcements_updated_at BEFORE UPDATE ON announcements FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
