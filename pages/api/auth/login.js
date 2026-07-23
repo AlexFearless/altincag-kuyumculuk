@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '';
     await db.from('users').update({ last_login_ip: ip }).eq('id', user.id);
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '5y' });
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here', { expiresIn: '5y' });
 
     res.status(200).json({
       success: true,

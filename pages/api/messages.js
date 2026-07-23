@@ -9,7 +9,7 @@ async function verifyAdminToken(db, req) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   try {
-    const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+    const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
     const { data: admin } = await db.from('admins').select('id, name, is_active').eq('id', decoded.id).single();
     if (!admin || !admin.is_active) return null;
     return admin;

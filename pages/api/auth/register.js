@@ -5,7 +5,7 @@ import { rateLimit } from '@/lib/rateLimit';
 import { validateEmail, validatePhone, sanitize } from '@/lib/sanitize';
 import sgMail from '@sendgrid/mail';
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || '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');
 
 const limiter = rateLimit({ windowMs: 60000, max: 5, message: 'Çok fazla kayıt denemesi. 1 dakika bekleyin.' });
 
@@ -15,7 +15,7 @@ function generateCode() {
 
 async function sendVerificationEmail(email, name, code) {
   await sgMail.send({
-    from: process.env.SENDGRID_FROM_EMAIL,
+    from: process.env.SENDGRID_FROM_EMAIL || 'kuyumculukaltincag@gmail.com',
     to: email,
     subject: 'AltınÇağ Kuyumculuk - E-posta Doğrulama Kodu',
     html: `
@@ -115,7 +115,7 @@ export default async function handler(req, res) {
       emailError = err.message;
     }
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here', { expiresIn: '10m' });
 
     res.status(201).json({
       success: true,

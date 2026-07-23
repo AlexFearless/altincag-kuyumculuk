@@ -6,7 +6,7 @@ import { sanitize, validateEmail, validatePhone } from '@/lib/sanitize';
 
 async function verifyAdminActive(db, token) {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
     const { data: admin } = await db
       .from('admins')
       .select('id, is_active, email')

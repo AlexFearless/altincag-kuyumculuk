@@ -12,7 +12,7 @@ export default async function handler(req, res) {
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
       }
-      const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+      const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
 
       const { data: user } = await db
         .from('users')
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
     }
 
-    const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+    const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
 
     const { name, phone, email, address } = req.body;
     const updateData = {};

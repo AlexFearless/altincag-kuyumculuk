@@ -2,7 +2,7 @@ import { getDb } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimit';
 import sgMail from '@sendgrid/mail';
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || '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');
 
 const limiter = rateLimit({ windowMs: 60000, max: 3, message: 'Çok fazla deneme. 1 dakika bekleyin.' });
 
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     let emailError = null;
     try {
       await sgMail.send({
-        from: process.env.SENDGRID_FROM_EMAIL,
+        from: process.env.SENDGRID_FROM_EMAIL || 'kuyumculukaltincag@gmail.com',
         to: cleanEmail,
         subject: 'AltınÇağ Kuyumculuk - Yeni Doğrulama Kodu',
         html: `
