@@ -1,6 +1,7 @@
 import { getDb } from '@/lib/supabase';
 import { withAuth } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
+import { sendOrderStatusEmail } from '@/lib/orderEmails';
 
 async function handler(req, res) {
   let db;
@@ -118,6 +119,10 @@ async function handlePut(db, req, res) {
       .single();
 
     createLog(db, { action: `Sipariş durumu güncellendi: ${oldStatus} → ${orderStatus || 'tracking'}`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, oldStatus, newStatus: orderStatus }, req });
+
+    if (orderStatus && orderStatus !== oldStatus) {
+      sendOrderStatusEmail(order, orderStatus).catch(() => {});
+    }
 
     res.status(200).json({ success: true, order: mapOrder(updated) });
   } catch (error) {

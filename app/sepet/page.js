@@ -120,6 +120,7 @@ export default function CartPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           guestId: localStorage.getItem('altincag_guest_id'),
+          userId: user?.id,
           customerInfo: finalCustomerInfo,
           specialInstructions,
           items: orderItems,
@@ -159,7 +160,7 @@ export default function CartPage() {
             Sipariş numaranız: <span className="font-semibold">{orderSuccess.orderNumber}</span>
           </p>
           <p className="text-sm text-earth-400 mb-4">
-            Sipariş numaranız: <span className="font-semibold">{orderSuccess.orderNumber}</span>
+            Siparişiniz onay e-postası ile birlikte size bildirilecektir.
           </p>
           {couponDiscount && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">

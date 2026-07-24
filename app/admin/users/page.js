@@ -12,6 +12,9 @@ export default function AdminUsers() {
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [saveMsg, setSaveMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userOrders, setUserOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -65,6 +68,24 @@ export default function AdminUsers() {
       fetchUsers(token);
     } catch (error) {
       console.error('Silme hatası:', error);
+    }
+  };
+
+  const fetchUserOrders = async (user) => {
+    setSelectedUser(user);
+    setLoadingOrders(true);
+    setUserOrders([]);
+    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+    try {
+      const res = await fetch(`/api/admin/orders?userId=${user._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setUserOrders(data.orders || []);
+    } catch (error) {
+      console.error('Siparişler yüklenemedi:', error);
+    } finally {
+      setLoadingOrders(false);
     }
   };
 
@@ -189,6 +210,12 @@ export default function AdminUsers() {
                       {u.isActive !== false ? 'Aktif' : 'Pasif'}
                     </span>
                     <button
+                      onClick={() => fetchUserOrders(u)}
+                      className="px-3 py-1 rounded-sm text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                    >
+                      Detay
+                    </button>
+                    <button
                       onClick={() => editingUser?._id === u._id ? setEditingUser(null) : startEdit(u)}
                       className={`px-3 py-1 rounded-sm text-xs font-medium transition-colors ${
                         editingUser?._id === u._id ? 'bg-earth-200 text-earth-600' : 'bg-gold-100 text-gold-700 hover:bg-gold-200'
@@ -298,6 +325,107 @@ export default function AdminUsers() {
           </div>
         )}
       </div>
+
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-serif text-xl font-bold text-earth-800">
+                Müşteri Detayı
+              </h2>
+              <button
+                onClick={() => { setSelectedUser(null); setUserOrders([]); }}
+                className="text-earth-400 hover:text-earth-600"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 p-4 bg-earth-50 rounded-lg">
+              <div>
+                <p className="text-xs text-earth-400">Ad Soyad</p>
+                <p className="text-sm font-medium text-earth-800">{selectedUser.name}</p>
+              </div>
+              <div>
+                <p className="text-xs text-earth-400">E-posta</p>
+                <p className="text-sm text-earth-700">{selectedUser.email}</p>
+              </div>
+              <div>
+                <p className="text-xs text-earth-400">Telefon</p>
+                <p className="text-sm text-earth-700">{selectedUser.phone || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-earth-400">Toplam Sipariş</p>
+                <p className="text-sm font-medium text-earth-800">{userOrders.length}</p>
+              </div>
+              <div>
+                <p className="text-xs text-earth-400">Toplam Harcama</p>
+                <p className="text-sm font-medium text-gold-600">
+                  {userOrders.reduce((sum, o) => sum + (o.total || 0), 0).toLocaleString('tr-TR')} TL
+                </p>
+              </div>
+            </div>
+
+            {loadingOrders ? (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              </div>
+            ) : userOrders.length === 0 ? (
+              <div className="text-center py-8 text-earth-400">
+                Henüz sipariş bulunmuyor.
+              </div>
+            ) : (
+              <div>
+                <h3 className="font-semibold text-earth-800 mb-3">Siparişler</h3>
+                <div className="space-y-3">
+                  {userOrders.map((order) => (
+                    <div key={order._id} className="border border-earth-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-earth-800">
+                          Sipariş #{order.orderNumber || order._id?.slice(-8)}
+                        </span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                          order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {order.status === 'delivered' ? 'Teslim Edildi' :
+                           order.status === 'cancelled' ? 'İptal' :
+                           order.status === 'shipped' ? 'Kargoda' :
+                           order.status === 'processing' ? 'İşleniyor' :
+                           order.status === 'pending' ? 'Bekliyor' : order.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-earth-500">
+                          {new Date(order.createdAt || order.date).toLocaleDateString('tr-TR')}
+                        </span>
+                        <span className="font-medium text-earth-800">
+                          {(order.total || 0).toLocaleString('tr-TR')} TL
+                        </span>
+                      </div>
+                      {order.items && (
+                        <p className="text-xs text-earth-400 mt-2">
+                          {order.items.length} ürün
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => { setSelectedUser(null); setUserOrders([]); }}
+                className="px-4 py-2 text-earth-600 hover:text-earth-800"
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

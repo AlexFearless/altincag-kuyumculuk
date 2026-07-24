@@ -17,6 +17,12 @@ export default function AdminProducts() {
     discountType: 'real',
     productIds: [],
   });
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [bulkPriceModal, setBulkPriceModal] = useState(false);
+  const [bulkStockModal, setBulkStockModal] = useState(false);
+  const [bulkPriceValue, setBulkPriceValue] = useState('');
+  const [bulkStockValue, setBulkStockValue] = useState('');
   const fileInputRef = useRef(null);
   const router = useRouter();
 
@@ -178,6 +184,50 @@ export default function AdminProducts() {
     }
   };
 
+  const handleBulkUpdate = async (field, value) => {
+    if (selectedProducts.length === 0) return;
+    try {
+      const res = await fetch('/api/admin/products', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          bulkUpdate: true,
+          productIds: selectedProducts,
+          field,
+          value: Number(value),
+        }),
+      });
+      if (res.ok) {
+        setSelectedProducts([]);
+        setBulkMode(false);
+        setBulkPriceModal(false);
+        setBulkStockModal(false);
+        setBulkPriceValue('');
+        setBulkStockValue('');
+        fetchProducts();
+      }
+    } catch (error) {
+      console.error('Toplu güncelleme hatası:', error);
+    }
+  };
+
+  const toggleProductSelection = (id) => {
+    setSelectedProducts((prev) =>
+      prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProducts.length === products.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(products.map((p) => p._id));
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -220,6 +270,19 @@ export default function AdminProducts() {
             </div>
             <div className="flex items-center space-x-3">
               <button
+                onClick={() => {
+                  setBulkMode(!bulkMode);
+                  setSelectedProducts([]);
+                }}
+                className={`px-4 py-2 rounded-sm text-sm transition-colors ${
+                  bulkMode
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-earth-500 text-white hover:bg-earth-600'
+                }`}
+              >
+                Toplu İşlem
+              </button>
+              <button
                 onClick={() => setDiscountModal(true)}
                 className="px-4 py-2 bg-earth-500 text-white rounded-sm text-sm hover:bg-earth-600 transition-colors"
               >
@@ -256,6 +319,44 @@ export default function AdminProducts() {
           </select>
         </div>
 
+        {bulkMode && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center space-x-2 text-sm text-earth-700">
+                <input
+                  type="checkbox"
+                  checked={selectedProducts.length === products.length && products.length > 0}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 text-blue-600 rounded"
+                />
+                <span>Tümünü Seç ({selectedProducts.length}/{products.length})</span>
+              </label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setBulkPriceModal(true)}
+                disabled={selectedProducts.length === 0}
+                className="px-4 py-2 bg-gold-500 text-white rounded-sm text-sm hover:bg-gold-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Toplu Fiyat Güncelle
+              </button>
+              <button
+                onClick={() => setBulkStockModal(true)}
+                disabled={selectedProducts.length === 0}
+                className="px-4 py-2 bg-green-600 text-white rounded-sm text-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Toplu Stok Güncelle
+              </button>
+              <button
+                onClick={() => { setSelectedProducts([]); setBulkMode(false); }}
+                className="px-4 py-2 bg-earth-300 text-earth-700 rounded-sm text-sm hover:bg-earth-400 transition-colors"
+              >
+                Seçimi Kaldır
+              </button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-12">
             <div className="w-12 h-12 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -265,6 +366,16 @@ export default function AdminProducts() {
             <table className="w-full">
               <thead className="bg-earth-50">
                 <tr>
+                  {bulkMode && (
+                    <th className="px-4 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.length === products.length && products.length > 0}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 text-blue-600 rounded"
+                      />
+                    </th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-earth-500 uppercase">
                     Ürün
                   </th>
@@ -287,7 +398,17 @@ export default function AdminProducts() {
               </thead>
               <tbody className="divide-y divide-earth-100">
                 {products.map((product) => (
-                  <tr key={product._id} className="hover:bg-earth-50">
+                  <tr key={product._id} className={`hover:bg-earth-50 ${selectedProducts.includes(product._id) ? 'bg-blue-50' : ''}`}>
+                    {bulkMode && (
+                      <td className="px-4 py-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedProducts.includes(product._id)}
+                          onChange={() => toggleProductSelection(product._id)}
+                          className="w-4 h-4 text-blue-600 rounded"
+                        />
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         {product.images && product.images[0] ? (
@@ -605,6 +726,88 @@ export default function AdminProducts() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {bulkPriceModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6">
+            <h2 className="font-serif text-xl font-bold text-earth-800 mb-4">
+              Toplu Fiyat Güncelle
+            </h2>
+            <p className="text-sm text-earth-500 mb-4">
+              {selectedProducts.length} ürün seçildi
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-earth-700 mb-1">
+                Yeni Fiyat (TL)
+              </label>
+              <input
+                type="number"
+                value={bulkPriceValue}
+                onChange={(e) => setBulkPriceValue(e.target.value)}
+                className="input-field"
+                min="0"
+                placeholder="Fiyat girin"
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => { setBulkPriceModal(false); setBulkPriceValue(''); }}
+                className="px-4 py-2 text-earth-600 hover:text-earth-800"
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => handleBulkUpdate('price', bulkPriceValue)}
+                disabled={!bulkPriceValue || Number(bulkPriceValue) < 0}
+                className="px-6 py-2 bg-gold-500 text-white rounded-sm hover:bg-gold-600 transition-colors disabled:opacity-50"
+              >
+                Uygula
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkStockModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6">
+            <h2 className="font-serif text-xl font-bold text-earth-800 mb-4">
+              Toplu Stok Güncelle
+            </h2>
+            <p className="text-sm text-earth-500 mb-4">
+              {selectedProducts.length} ürün seçildi
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-earth-700 mb-1">
+                Yeni Stok Miktarı
+              </label>
+              <input
+                type="number"
+                value={bulkStockValue}
+                onChange={(e) => setBulkStockValue(e.target.value)}
+                className="input-field"
+                min="0"
+                placeholder="Stok miktarı girin"
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => { setBulkStockModal(false); setBulkStockValue(''); }}
+                className="px-4 py-2 text-earth-600 hover:text-earth-800"
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => handleBulkUpdate('stock', bulkStockValue)}
+                disabled={!bulkStockValue || Number(bulkStockValue) < 0}
+                className="px-6 py-2 bg-green-600 text-white rounded-sm hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                Uygula
+              </button>
+            </div>
           </div>
         </div>
       )}

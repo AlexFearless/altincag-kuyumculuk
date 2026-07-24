@@ -1,6 +1,7 @@
 import { getDb } from '@/lib/supabase';
 import { sanitize } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/rateLimit';
+import { sendOrderStatusEmail } from '@/lib/orderEmails';
 
 const orderLimiter = rateLimit({ windowMs: 60000, max: 5, message: 'Çok fazla sipariş denemesi. 1 dakika bekleyin.' });
 
@@ -24,7 +25,7 @@ export default async function handler(req, res) {
     let db;
     try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
 
-    const { guestId, customerInfo, specialInstructions, items, paymentMethod, couponCode, discountAmount } = req.body;
+    const { guestId, userId, customerInfo, specialInstructions, items, paymentMethod, couponCode, discountAmount } = req.body;
 
     if (!customerInfo || !items || items.length === 0) {
       return res.status(400).json({ error: 'Sipariş bilgileri eksik' });
@@ -118,9 +119,19 @@ export default async function handler(req, res) {
     await db.from('order_items').insert(orderItems);
 
     for (const vi of verifiedItems) {
-      const { data: p } = await db.from('products').select('stock').eq('id', vi.product_id).single();
+      const { data: p } = await db.from('products').select('stock, name').eq('id', vi.product_id).single();
       if (p) {
-        await db.from('products').update({ stock: Math.max(0, p.stock - vi.quantity) }).eq('id', vi.product_id);
+        const newStock = Math.max(0, p.stock - vi.quantity);
+        await db.from('products').update({ stock: newStock }).eq('id', vi.product_id);
+        if (newStock <= 3) {
+          await db.from('notifications').insert({
+            type: 'low_stock',
+            title: 'Düşük Stok Uyarısı',
+            message: `${p.name} ürününün stokunda ${newStock} adet kaldı`,
+            is_read: false,
+            target_id: vi.product_id,
+          });
+        }
       }
     }
 
@@ -138,6 +149,8 @@ export default async function handler(req, res) {
         await db.from('carts').delete().eq('id', cart.id);
       }
     }
+
+    sendOrderStatusEmail(order, 'pending').catch(() => {});
 
     res.status(201).json({
       success: true,

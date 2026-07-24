@@ -8,6 +8,7 @@ import Link from 'next/link';
 export default function AdminDashboard() {
   const [admin, setAdmin] = useState(null);
   const [stats, setStats] = useState({ products: 0, orders: 0, revenue: 0, users: 0, unreadMessages: 0 });
+  const [lowStockProducts, setLowStockProducts] = useState([]);
   const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
 
@@ -53,6 +54,9 @@ export default function AdminDashboard() {
         users: usersData.total || 0,
         unreadMessages: messagesData.unreadCount || 0,
       });
+
+      const allProducts = productsData.products || [];
+      setLowStockProducts(allProducts.filter(p => p.stock <= 3 && p.is_active));
     } catch (error) {
       console.error('Stats error:', error);
     }
@@ -166,6 +170,22 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {lowStockProducts.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+            <h3 className="font-serif text-lg font-bold text-red-800 mb-4">Düşük Stok Uyarısı</h3>
+            <div className="space-y-2">
+              {lowStockProducts.map(product => (
+                <div key={product.id} className="flex items-center justify-between bg-white rounded-lg p-3 border border-red-100">
+                  <span className="text-sm font-medium text-earth-800">{product.name}</span>
+                  <span className={`text-sm font-bold ${product.stock === 0 ? 'text-red-600' : 'text-orange-500'}`}>
+                    {product.stock === 0 ? 'Tükendi' : `${product.stock} adet kaldı`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid md:grid-cols-2 gap-6">
           <Link
             href="/admin/products"
@@ -221,6 +241,12 @@ export default function AdminDashboard() {
             <ReportIcon className="w-12 h-12 text-earth-300 group-hover:text-gold-500 transition-colors mb-4" />
             <h3 className="font-serif text-xl font-semibold text-earth-800 mb-2">Satış Raporları</h3>
             <p className="text-earth-500 text-sm">Günlük, aylık satış istatistikleri.</p>
+          </Link>
+
+          <Link href="/admin/campaigns" className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow group">
+            <CalendarIcon className="w-12 h-12 text-earth-300 group-hover:text-gold-500 transition-colors mb-4" />
+            <h3 className="font-serif text-xl font-semibold text-earth-800 mb-2">Kampanya Yönetimi</h3>
+            <p className="text-earth-500 text-sm">Kampanya ve indirimleri oluştur ve yönet.</p>
           </Link>
 
           <Link href="/admin/logs" className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow group">
@@ -310,6 +336,14 @@ function MegaphoneIcon({ className }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.52-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
     </svg>
   );
 }

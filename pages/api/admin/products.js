@@ -108,7 +108,31 @@ async function handlePost(db, req, res) {
 
 async function handlePut(db, req, res) {
   try {
-    const { id, name, description, price, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType, isActive } = req.body;
+    const { id, name, description, price, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType, isActive, bulkUpdate, productIds, field, value } = req.body;
+
+    if (bulkUpdate && productIds && productIds.length > 0) {
+      if (!field || (field !== 'price' && field !== 'stock')) {
+        return res.status(400).json({ error: 'Geçersiz alan. price veya stock olmalı.' });
+      }
+      if (isNaN(Number(value)) || Number(value) < 0) {
+        return res.status(400).json({ error: 'Geçersiz değer' });
+      }
+
+      const updateData = {};
+      if (field === 'price') updateData.price = Number(value);
+      if (field === 'stock') updateData.stock = Math.max(0, Number(value));
+
+      const { error } = await db
+        .from('products')
+        .update(updateData)
+        .in('id', productIds);
+
+      if (error) throw error;
+
+      createLog(db, { action: `Toplu ${field === 'price' ? 'fiyat' : 'stok'} güncellendi`, adminEmail: req.admin?.email || 'admin', targetType: 'product', targetId: productIds.join(','), details: { count: productIds.length, field, value }, req });
+      return res.status(200).json({ success: true, updated: productIds.length });
+    }
+
     if (!id) return res.status(400).json({ error: 'Ürün ID zorunludur' });
 
     const updateData = {};
