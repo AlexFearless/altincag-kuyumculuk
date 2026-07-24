@@ -433,8 +433,8 @@ export default function AdminProducts() {
                     </td>
                     <td className="px-6 py-4 text-sm">
                       {product.discountPercent > 0 ? (
-                        <span className="bg-red-100 text-red-600 px-2 py-1 rounded-sm">
-                          %{product.discountPercent}
+                        <span className={`px-2 py-1 rounded-sm ${product.discountType === 'real' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                          %{product.discountPercent} {product.discountType === 'real' ? '✓' : ''}
                         </span>
                       ) : (
                         <span className="text-earth-400">-</span>
@@ -595,6 +595,41 @@ export default function AdminProducts() {
                     min="0"
                     max="100"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">
+                    İndirim Türü
+                  </label>
+                  <select
+                    value={formData.discountType}
+                    onChange={(e) =>
+                      setFormData({ ...formData, discountType: e.target.value })
+                    }
+                    className="input-field"
+                  >
+                    <option value="">İndirim Yok</option>
+                    <option value="real">Gerçek İndirim (fiyat düşer)</option>
+                    <option value="fake">Sahte İndirim (sadece üstü çizili göster)</option>
+                  </select>
+                </div>
+                <div>
+                  {formData.discountType === 'real' && formData.discountPercent > 0 && (
+                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800 font-medium">
+                        Satış Fiyatı: {formData.price ? (Number(formData.price) * (1 - formData.discountPercent / 100)).toFixed(2) : '0'} TL
+                      </p>
+                    </div>
+                  )}
+                  {formData.discountType === 'fake' && (
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800 font-medium">
+                        Ürün fiyatı değişmez, eski fiyat üstü çizili gösterilir
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

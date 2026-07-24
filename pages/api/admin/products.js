@@ -77,12 +77,22 @@ async function handlePost(db, req, res) {
 
     const filteredImages = Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.length < 500000).slice(0, 10) : [];
 
+    const finalDiscountType = ['real', 'fake', ''].includes(discountType) ? discountType : '';
+    const finalDiscountPercent = Math.min(100, Math.max(0, Number(discountPercent) || 0));
+    const finalPrice = Number(price);
+
+    let discountedPrice = 0;
+    if (finalDiscountType === 'real' && finalDiscountPercent > 0) {
+      discountedPrice = Math.round(finalPrice * (1 - finalDiscountPercent / 100));
+    }
+
     const { data: product, error } = await db
       .from('products')
       .insert({
         name: sanitize(name.trim()),
         description: sanitize(description || ''),
-        price: Number(price),
+        price: finalPrice,
+        discounted_price: discountedPrice,
         category,
         images: filteredImages,
         stock: Number(stock) || 0,
@@ -90,8 +100,8 @@ async function handlePost(db, req, res) {
         weight: Number(weight) || 0,
         material: sanitize(material || ''),
         is_featured: !!isFeatured,
-        discount_percent: Number(discountPercent) || 0,
-        discount_type: discountType || '',
+        discount_percent: finalDiscountPercent,
+        discount_type: finalDiscountType,
       })
       .select()
       .single();
@@ -148,6 +158,16 @@ async function handlePut(db, req, res) {
     if (isFeatured !== undefined) updateData.is_featured = !!isFeatured;
     if (discountPercent !== undefined) updateData.discount_percent = Math.min(100, Math.max(0, Number(discountPercent) || 0));
     if (discountType !== undefined) updateData.discount_type = ['real', 'fake', ''].includes(discountType) ? discountType : '';
+
+    if ('discount_type' in updateData || 'discount_percent' in updateData || 'price' in updateData) {
+      const { data: current } = await db.from('products').select('price, discount_percent, discount_type').eq('id', id).single();
+      if (current) {
+        const t = updateData.discount_type !== undefined ? updateData.discount_type : current.discount_type;
+        const p = updateData.discount_percent !== undefined ? updateData.discount_percent : current.discount_percent;
+        const pr = updateData.price !== undefined ? updateData.price : current.price;
+        updateData.discounted_price = (t === 'real' && p > 0) ? Math.round(pr * (1 - p / 100)) : 0;
+      }
+    }
     if (isActive !== undefined) updateData.is_active = !!isActive;
 
     if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Güncellenecek alan belirtilmedi' });
