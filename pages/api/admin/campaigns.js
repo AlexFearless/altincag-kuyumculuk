@@ -92,22 +92,6 @@ async function handlePost(db, req, res) {
 
     if (error) throw error;
 
-    if (isActive !== false) {
-      const categoryText = (appliesTo || 'all') === 'category' && targetCategory ? ` (${targetCategory})` : '';
-      const discountText = discountType === 'percent' ? `%${discountValue}` : `${discountValue} TL`;
-      try {
-        await db.from('announcements').update({ is_active: false }).eq('is_active', true);
-        await db.from('announcements').insert({
-          title: `Kampanya: ${name.trim()}`,
-          message: `${discountText} indirim${categoryText} - ${new Date(startDate).toLocaleDateString('tr-TR')} ile ${new Date(endDate).toLocaleDateString('tr-TR')} arası geçerli!`,
-          bg_color: '#C8A96E',
-          text_color: '#FFFFFF',
-          is_active: true,
-          created_by: req.admin?.email || 'admin',
-        });
-      } catch (e) { console.error('Campaign announcement error:', e); }
-    }
-
     createLog(db, { action: `Kampanya oluşturuldu: ${campaign.name}`, adminEmail: req.admin?.email || 'admin', targetType: 'campaign', targetId: campaign.id, details: { name: campaign.name, discountType: campaign.discount_type, discountValue: campaign.discount_value }, req });
     res.status(201).json({ success: true, campaign: mapCampaign(campaign) });
   } catch (error) {

@@ -12,6 +12,8 @@ export default function AdminCampaigns() {
   const [message, setMessage] = useState({ text: '', type: '' });
   const router = useRouter();
 
+  const categoryNames = { yuzuk: 'Yüzük', kolye: 'Kolye', bileklik: 'Bileklik', kelepce: 'Kelepçe', kupe: 'Küpe', zincir: 'Zincir', set: 'Set' };
+
   const categories = [
     { value: '', label: 'Kategori Seçin' },
     { value: 'yuzuk', label: 'Yüzük' },
@@ -263,7 +265,7 @@ export default function AdminCampaigns() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-earth-500">
-                        {campaign.appliesTo === 'all' ? 'Tüm Ürünler' : campaign.appliesTo === 'category' ? `Kategori: ${campaign.targetCategory || 'Tüm Kategoriler'}` : 'Seçili Ürünler'}
+                        {campaign.appliesTo === 'all' ? 'Tüm Ürünler' : campaign.appliesTo === 'category' ? `Kategori: ${categoryNames[campaign.targetCategory] || campaign.targetCategory || 'Tüm Kategoriler'}` : 'Seçili Ürünler'}
                       </td>
                       <td className="px-6 py-4 text-sm text-earth-500">
                         {new Date(campaign.startDate).toLocaleDateString('tr-TR')} - {new Date(campaign.endDate).toLocaleDateString('tr-TR')}
