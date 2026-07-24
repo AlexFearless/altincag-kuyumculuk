@@ -636,14 +636,20 @@ export default function AdminProducts() {
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     Malzeme
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.material}
                     onChange={(e) =>
                       setFormData({ ...formData, material: e.target.value })
                     }
                     className="input-field"
-                  />
+                  >
+                    <option value="">Seçiniz</option>
+                    <option value="Altın">Altın</option>
+                    <option value="Gümüş">Gümüş</option>
+                    <option value="Rose">Rose</option>
+                    <option value="Titanyum">Titanyum</option>
+                    <option value="Çelik">Çelik</option>
+                  </select>
                 </div>
               </div>
 
