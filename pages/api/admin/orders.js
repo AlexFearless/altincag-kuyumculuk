@@ -51,13 +51,17 @@ function mapOrder(o) {
 
 async function handleGet(db, req, res) {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, userId, page = 1, limit = 20 } = req.query;
     const safeLimit = parseInt(limit) || 20;
     const from = (parseInt(page) - 1) * safeLimit;
     const to = from + safeLimit - 1;
 
     let query = db.from('orders').select('*, order_items(*, products(name, images))', { count: 'exact' });
     if (status) query = query.eq('order_status', status);
+    if (userId) {
+      const { data: user } = await db.from('users').select('email').eq('id', userId).single();
+      if (user) query = query.eq('customer_email', user.email);
+    }
 
     const { data: orders, count } = await query
       .order('created_at', { ascending: false })

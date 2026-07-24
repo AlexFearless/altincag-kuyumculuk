@@ -361,7 +361,7 @@ export default function AdminUsers() {
               <div>
                 <p className="text-xs text-earth-400">Toplam Harcama</p>
                 <p className="text-sm font-medium text-gold-600">
-                  {userOrders.reduce((sum, o) => sum + (o.total || 0), 0).toLocaleString('tr-TR')} TL
+                  {userOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0).toLocaleString('tr-TR')} TL
                 </p>
               </div>
             </div>
@@ -385,28 +385,42 @@ export default function AdminUsers() {
                           Sipariş #{order.orderNumber || order._id?.slice(-8)}
                         </span>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                          order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                          order.orderStatus === 'delivered' ? 'bg-green-100 text-green-700' :
+                          order.orderStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
+                          order.orderStatus === 'refunded' ? 'bg-orange-100 text-orange-700' :
+                          order.orderStatus === 'shipped' ? 'bg-purple-100 text-purple-700' :
+                          order.orderStatus === 'processing' ? 'bg-blue-100 text-blue-700' :
                           'bg-yellow-100 text-yellow-700'
                         }`}>
-                          {order.status === 'delivered' ? 'Teslim Edildi' :
-                           order.status === 'cancelled' ? 'İptal' :
-                           order.status === 'shipped' ? 'Kargoda' :
-                           order.status === 'processing' ? 'İşleniyor' :
-                           order.status === 'pending' ? 'Bekliyor' : order.status}
+                          {order.orderStatus === 'delivered' ? 'Teslim Edildi' :
+                           order.orderStatus === 'cancelled' ? 'İptal' :
+                           order.orderStatus === 'refunded' ? 'İade' :
+                           order.orderStatus === 'shipped' ? 'Kargoda' :
+                           order.orderStatus === 'processing' ? 'İşleniyor' :
+                           order.orderStatus === 'pending' ? 'Bekliyor' : order.orderStatus}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-earth-500">
                           {new Date(order.createdAt || order.date).toLocaleDateString('tr-TR')}
                         </span>
-                        <span className="font-medium text-earth-800">
-                          {(order.total || 0).toLocaleString('tr-TR')} TL
+                        <span className="font-medium text-gold-600">
+                          {(order.totalAmount || 0).toLocaleString('tr-TR')} TL
                         </span>
                       </div>
-                      {order.items && (
-                        <p className="text-xs text-earth-400 mt-2">
-                          {order.items.length} ürün
+                      {order.items && order.items.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-earth-100">
+                          {order.items.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs text-earth-500 py-0.5">
+                              <span>{item.name} x{item.quantity}</span>
+                              <span>{((item.price || 0) * (item.quantity || 1)).toLocaleString('tr-TR')} TL</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {order.couponCode && (
+                        <p className="text-xs text-green-600 mt-1 font-medium">
+                          Kupon: {order.couponCode} · -{(order.discountAmount || 0).toLocaleString('tr-TR')} TL
                         </p>
                       )}
                     </div>
