@@ -103,6 +103,50 @@ export default async function handler(req, res) {
     } catch (error) {
       res.status(500).json({ error: 'Kullanıcı güncellenemedi' });
     }
+  } else if (req.method === 'POST') {
+    try {
+      const { name, email, password, phone } = req.body;
+      if (!name || !email || !password) {
+        return res.status(400).json({ error: 'Ad, e-posta ve şifre zorunludur' });
+      }
+      if (typeof name !== 'string' || name.trim().length < 2 || name.length > 100) {
+        return res.status(400).json({ error: 'Geçersiz isim' });
+      }
+      if (!validateEmail(email)) return res.status(400).json({ error: 'Geçersiz e-posta' });
+      if (typeof password !== 'string' || password.length < 6) {
+        return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı' });
+      }
+      if (phone && !validatePhone(phone)) return res.status(400).json({ error: 'Geçersiz telefon' });
+
+      const cleanEmail = email.toLowerCase().trim();
+      const { data: existing } = await db.from('users').select('id').eq('email', cleanEmail).single();
+      if (existing) return res.status(409).json({ error: 'Bu e-posta adresi zaten kayıtlı' });
+
+      const hashedPassword = await bcrypt.hash(password, 12);
+      const { data: user, error: insertError } = await db
+        .from('users')
+        .insert({
+          name: sanitize(name.trim()),
+          email: cleanEmail,
+          password: hashedPassword,
+          phone: sanitize(phone || ''),
+          is_active: true,
+          email_verified: true,
+        })
+        .select('id, name, email, phone, address, is_active, email_verified, created_at, updated_at')
+        .single();
+
+      if (insertError) {
+        if (insertError.code === '23505') return res.status(409).json({ error: 'Bu e-posta adresi zaten kayıtlı' });
+        throw insertError;
+      }
+
+      createLog(db, { action: 'Kullanıcı oluşturuldu', adminEmail: adminData.email, targetType: 'user', targetId: user.id, details: { name: user.name, email: user.email }, req });
+      res.status(201).json({ success: true, user: mapUser(user) });
+    } catch (error) {
+      console.error('Admin create user error:', error);
+      res.status(500).json({ error: 'Kullanıcı oluşturulamadı' });
+    }
   } else if (req.method === 'DELETE') {
     try {
       const { id } = req.query;

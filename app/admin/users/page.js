@@ -15,6 +15,10 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userOrders, setUserOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [creating, setCreating] = useState(false);
+  const [createMsg, setCreateMsg] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -146,6 +150,41 @@ export default function AdminUsers() {
     router.push('/admin/login');
   };
 
+  const handleCreateUser = async () => {
+    if (!createForm.name.trim() || !createForm.email.trim() || !createForm.password.trim()) {
+      setCreateMsg('Ad, e-posta ve şifre zorunludur');
+      return;
+    }
+    if (createForm.password.length < 6) {
+      setCreateMsg('Şifre en az 6 karakter olmalı');
+      return;
+    }
+    setCreating(true);
+    setCreateMsg('');
+    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(createForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setShowCreateModal(false);
+        setCreateForm({ name: '', email: '', phone: '', password: '' });
+        fetchUsers(token);
+        setSaveMsg('Kullanıcı oluşturuldu');
+        setTimeout(() => setSaveMsg(''), 3000);
+      } else {
+        setCreateMsg(data.error || 'Oluşturma hatası');
+      }
+    } catch (e) {
+      setCreateMsg('Bağlantı hatası');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-earth-50">
       <nav className="bg-white shadow-sm">
@@ -165,13 +204,21 @@ export default function AdminUsers() {
           <h1 className="font-serif text-2xl font-bold text-earth-800">
             Kayıtlı Kullanıcılar ({users.length})
           </h1>
-          <input
-            type="text"
-            placeholder="İsim, e-posta veya telefon ile ara..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-80 px-4 py-2 border border-earth-200 rounded-sm text-sm focus:outline-none focus:border-gold-500"
-          />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 bg-gold-500 text-white rounded-sm text-sm hover:bg-gold-600 transition-colors"
+            >
+              + Yeni Kullanıcı
+            </button>
+            <input
+              type="text"
+              placeholder="İsim, e-posta veya telefon ile ara..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-80 px-4 py-2 border border-earth-200 rounded-sm text-sm focus:outline-none focus:border-gold-500"
+            />
+          </div>
         </div>
 
         {saveMsg && (
@@ -435,6 +482,77 @@ export default function AdminUsers() {
                 className="px-4 py-2 text-earth-600 hover:text-earth-800"
               >
                 Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="font-serif text-xl font-bold text-earth-800 mb-4">Yeni Kullanıcı Oluştur</h2>
+
+            {createMsg && (
+              <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-sm text-sm">{createMsg}</div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-earth-700 mb-1">Ad Soyad *</label>
+                <input
+                  type="text"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="Ad Soyad"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-earth-700 mb-1">E-posta *</label>
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="ornek@email.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-earth-700 mb-1">Telefon</label>
+                <input
+                  type="text"
+                  value={createForm.phone}
+                  onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="05XX XXX XX XX"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-earth-700 mb-1">Şifre * (en az 6 karakter)</label>
+                <input
+                  type="password"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="••••••"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => { setShowCreateModal(false); setCreateMsg(''); setCreateForm({ name: '', email: '', phone: '', password: '' }); }}
+                className="px-4 py-2 text-earth-600 hover:text-earth-800"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleCreateUser}
+                disabled={creating}
+                className="px-6 py-2 bg-gold-500 text-white rounded-sm hover:bg-gold-600 transition-colors disabled:opacity-50"
+              >
+                {creating ? 'Oluşturuluyor...' : 'Oluştur'}
               </button>
             </div>
           </div>

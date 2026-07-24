@@ -124,11 +124,22 @@ async function handlePut(db, req, res) {
 
     createLog(db, { action: `Sipariş durumu güncellendi: ${oldStatus} → ${orderStatus || 'tracking'}`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, oldStatus, newStatus: orderStatus }, req });
 
-    if (orderStatus && orderStatus !== oldStatus) {
-      sendOrderStatusEmail(order, orderStatus).catch(() => {});
+    let whatsappUrl = null;
+    if (orderStatus && orderStatus !== oldStatus && order.customer_phone) {
+      const statusMessages = {
+        pending: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) alındı. Teşekkürler!`,
+        processing: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) hazırlanıyor.`,
+        shipped: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) kargoya verildi.${trackingNumber ? ` Kargo takip: ${trackingNumber}` : ''}`,
+        delivered: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) teslim edildi. İyi günler dileriz!`,
+        cancelled: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) iptal edildi.`,
+        refunded: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) için para iadesi yapıldı.`,
+      };
+      const msg = statusMessages[orderStatus] || `Siparişinizin durumu güncellendi: ${orderStatus}`;
+      const phone = order.customer_phone.replace(/[^0-9]/g, '');
+      whatsappUrl = `https://wa.me/90${phone.startsWith('0') ? phone.slice(1) : phone}?text=${encodeURIComponent(msg)}`;
     }
 
-    res.status(200).json({ success: true, order: mapOrder(updated) });
+    res.status(200).json({ success: true, order: mapOrder(updated), whatsappUrl });
   } catch (error) {
     console.error('Admin orders PUT error:', error);
     res.status(500).json({ error: 'Sipariş güncellenirken hata oluştu' });
