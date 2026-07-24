@@ -118,8 +118,16 @@ async function handlePut(db, req, res) {
     if (startDate !== undefined) updateData.start_date = startDate;
     if (endDate !== undefined) updateData.end_date = endDate;
     if (isActive !== undefined) updateData.is_active = !!isActive;
-    if (appliesTo !== undefined) updateData.applies_to = appliesTo;
-    if (targetCategory !== undefined) updateData.target_category = (appliesTo === 'category' || updateData.applies_to === 'category') ? (targetCategory || '').trim() || null : null;
+    if (appliesTo !== undefined) {
+      if (!['all', 'category', 'specific_products'].includes(appliesTo)) return res.status(400).json({ error: 'Geçersiz applies_to değeri' });
+      updateData.applies_to = appliesTo;
+    }
+    const effectiveAppliesTo = appliesTo || updateData.applies_to || 'all';
+    if (effectiveAppliesTo === 'category') {
+      updateData.target_category = (targetCategory || '').trim() || 'yuzuk';
+    } else {
+      updateData.target_category = null;
+    }
     if (targetProducts !== undefined) updateData.target_products = targetProducts;
 
     updateData.updated_at = new Date().toISOString();

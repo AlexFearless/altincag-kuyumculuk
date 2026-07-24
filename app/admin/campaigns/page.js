@@ -176,8 +176,8 @@ export default function AdminCampaigns() {
       startDate: campaign.startDate ? campaign.startDate.split('T')[0] : '',
       endDate: campaign.endDate ? campaign.endDate.split('T')[0] : '',
       isActive: campaign.isActive,
-      appliesTo: campaign.appliesTo,
-      targetCategory: campaign.targetCategory || '',
+      appliesTo: campaign.appliesTo || 'all',
+      targetCategory: campaign.targetCategory || 'yuzuk',
       targetProducts: campaign.targetProducts || [],
     });
     setShowModal(true);
