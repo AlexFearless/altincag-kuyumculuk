@@ -23,9 +23,12 @@ export default function ProductDetail({ product }) {
 
   const isRealDiscount = product.discountType === 'real' && product.discountPercent > 0 && product.discountedPrice > 0;
   const isFakeDiscount = product.discountType === 'fake' && product.discountPercent > 0;
-  const hasDiscount = isRealDiscount || isFakeDiscount;
+  const isCampaignDiscount = product.campaignDiscount > 0;
+  const hasDiscount = isRealDiscount || isFakeDiscount || isCampaignDiscount;
 
-  const displayPrice = isRealDiscount ? product.discountedPrice : product.price;
+  const displayPrice = isCampaignDiscount
+    ? product.discountedPrice
+    : isRealDiscount ? product.discountedPrice : product.price;
   const fakeOriginalPrice = isFakeDiscount
     ? Math.round(product.price * 100 / (100 - product.discountPercent))
     : 0;
@@ -96,7 +99,19 @@ export default function ProductDetail({ product }) {
             </div>
 
             <div className="flex items-baseline space-x-3">
-              {isRealDiscount ? (
+              {isCampaignDiscount ? (
+                <>
+                  <span className="text-3xl font-bold text-green-600">
+                    {displayPrice.toLocaleString('tr-TR')} TL
+                  </span>
+                  <span className="text-lg text-earth-400 line-through">
+                    {product.price.toLocaleString('tr-TR')} TL
+                  </span>
+                  <span className="bg-green-100 text-green-600 text-sm px-2 py-1 rounded-sm">
+                    Kampanya {product.campaignName}
+                  </span>
+                </>
+              ) : isRealDiscount ? (
                 <>
                   <span className="text-3xl font-bold text-gold-600">
                     {displayPrice.toLocaleString('tr-TR')} TL

@@ -2,6 +2,7 @@ import { getDb } from '@/lib/supabase';
 import { sanitize } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/rateLimit';
 import { sendOrderStatusEmail } from '@/lib/orderEmails';
+import { applyCampaignDiscounts } from '@/lib/campaignDiscounts';
 
 const orderLimiter = rateLimit({ windowMs: 60000, max: 5, message: 'Çok fazla sipariş denemesi. 1 dakika bekleyin.' });
 
@@ -59,9 +60,22 @@ export default async function handler(req, res) {
       if (dbProduct.stock < qty) {
         return res.status(400).json({ error: `"${dbProduct.name}" stokta yetersiz (mevcut: ${dbProduct.stock})` });
       }
-      const price = dbProduct.discount_type === 'real' && dbProduct.discounted_price > 0
+
+      let price = dbProduct.discount_type === 'real' && dbProduct.discounted_price > 0
         ? dbProduct.discounted_price
         : dbProduct.price;
+
+      const [discountedProduct] = await applyCampaignDiscounts(db, [{
+        ...dbProduct,
+        _id: dbProduct.id,
+        discountedPrice: dbProduct.discounted_price,
+        discountType: dbProduct.discount_type,
+        discountPercent: dbProduct.discount_percent,
+      }]);
+      if (discountedProduct && discountedProduct.campaignDiscount > 0) {
+        price = discountedProduct.discountedPrice;
+      }
+
       subtotal += price * qty;
       verifiedItems.push({
         product_id: dbProduct.id,

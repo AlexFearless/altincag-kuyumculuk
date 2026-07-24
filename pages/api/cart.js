@@ -1,5 +1,6 @@
 import { getDb } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimit';
+import { applyCampaignDiscounts } from '@/lib/campaignDiscounts';
 
 const cartLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla sepet işlemi. 1 dakika bekleyin.' });
 
@@ -19,7 +20,7 @@ async function getCartWithProducts(db, guestId) {
 
   if (!cartItems) return [];
 
-  return cartItems.map(ci => ({
+  let products = cartItems.map(ci => ({
     _id: ci.id,
     product: ci.products ? {
       _id: ci.products.id,
@@ -34,9 +35,21 @@ async function getCartWithProducts(db, guestId) {
       weight: ci.products.weight,
       stock: ci.products.stock,
       isActive: ci.products.is_active,
+      discountType: ci.products.discount_type,
+      discountPercent: ci.products.discount_percent,
     } : null,
     quantity: ci.quantity,
   })).filter(ci => ci.product);
+
+  const innerProducts = products.map(ci => ({ ...ci.product, _id: ci.product.id }));
+  const discounted = await applyCampaignDiscounts(db, innerProducts);
+  const discountedMap = {};
+  discounted.forEach(d => { discountedMap[d.id] = d; });
+
+  return products.map(ci => ({
+    ...ci,
+    product: discountedMap[ci.product.id] || ci.product,
+  }));
 }
 
 export default async function handler(req, res) {

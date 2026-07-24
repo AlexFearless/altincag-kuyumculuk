@@ -1,4 +1,5 @@
 import { getDbPublic } from '@/lib/supabase';
+import { applyCampaignDiscounts } from '@/lib/campaignDiscounts';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -23,7 +24,7 @@ export default async function handler(req, res) {
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    const mapped = (products || []).map(p => ({
+    let mapped = (products || []).map(p => ({
       _id: p.id,
       id: p.id,
       name: p.name,
@@ -44,6 +45,8 @@ export default async function handler(req, res) {
       createdAt: p.created_at,
       updatedAt: p.updated_at,
     }));
+
+    mapped = await applyCampaignDiscounts(db, mapped);
 
     res.status(200).json({
       products: mapped,

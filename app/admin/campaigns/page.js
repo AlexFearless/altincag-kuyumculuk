@@ -33,7 +33,7 @@ export default function AdminCampaigns() {
     endDate: '',
     isActive: true,
     appliesTo: 'all',
-    targetCategory: '',
+    targetCategory: 'yuzuk',
     targetProducts: [],
   });
 
@@ -92,7 +92,7 @@ export default function AdminCampaigns() {
       endDate: '',
       isActive: true,
       appliesTo: 'all',
-      targetCategory: '',
+      targetCategory: 'yuzuk',
       targetProducts: [],
     });
   };
@@ -386,7 +386,14 @@ export default function AdminCampaigns() {
                 <label className="block text-sm font-medium text-earth-700 mb-1">Kapsam *</label>
                 <select
                   value={formData.appliesTo}
-                  onChange={(e) => setFormData({ ...formData, appliesTo: e.target.value })}
+                  onChange={(e) => {
+                    const newAppliesTo = e.target.value;
+                    setFormData({
+                      ...formData,
+                      appliesTo: newAppliesTo,
+                      targetCategory: newAppliesTo === 'category' ? (formData.targetCategory || 'yuzuk') : formData.targetCategory,
+                    });
+                  }}
                   className="input-field"
                 >
                   <option value="all">Tüm Ürünler</option>

@@ -36,9 +36,12 @@ export default function ProductCard({ product }) {
 
   const isRealDiscount = product.discountType === 'real' && product.discountPercent > 0 && product.discountedPrice > 0;
   const isFakeDiscount = product.discountType === 'fake' && product.discountPercent > 0;
-  const hasDiscount = isRealDiscount || isFakeDiscount;
+  const isCampaignDiscount = product.campaignDiscount > 0;
+  const hasDiscount = isRealDiscount || isFakeDiscount || isCampaignDiscount;
 
-  const displayPrice = isRealDiscount ? product.discountedPrice : product.price;
+  const displayPrice = isCampaignDiscount
+    ? product.discountedPrice
+    : isRealDiscount ? product.discountedPrice : product.price;
   const fakeOriginalPrice = isFakeDiscount
     ? Math.round(product.price * 100 / (100 - product.discountPercent))
     : 0;
@@ -73,8 +76,8 @@ export default function ProductCard({ product }) {
           )}
 
           {hasDiscount && (
-            <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-medium px-2 py-1 rounded-sm">
-              %{product.discountPercent} İndirim
+            <div className={`absolute top-3 left-3 text-white text-xs font-medium px-2 py-1 rounded-sm ${isCampaignDiscount ? 'bg-green-600' : 'bg-red-500'}`}>
+              {isCampaignDiscount ? `Kampanya ${product.campaignName}` : `%${product.discountPercent} İndirim`}
             </div>
           )}
 
@@ -123,7 +126,16 @@ export default function ProductCard({ product }) {
           </h3>
 
           <div className="flex items-center space-x-2">
-            {isRealDiscount ? (
+            {isCampaignDiscount ? (
+              <>
+                <span className="text-lg font-bold text-green-600">
+                  {displayPrice.toLocaleString('tr-TR')} TL
+                </span>
+                <span className="text-sm text-earth-400 line-through">
+                  {product.price.toLocaleString('tr-TR')} TL
+                </span>
+              </>
+            ) : isRealDiscount ? (
               <>
                 <span className="text-lg font-bold text-gold-600">
                   {displayPrice.toLocaleString('tr-TR')} TL
