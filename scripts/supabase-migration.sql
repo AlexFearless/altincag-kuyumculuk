@@ -227,7 +227,7 @@ CREATE OR REPLACE FUNCTION compute_discounted_price()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.discount_percent > 0 AND NEW.discount_type = 'real' THEN
-    NEW.discounted_price := ROUND(NEW.price * (1 - NEW.discount_percent / 100), 2);
+    NEW.discounted_price := ROUND(NEW.price * (1 - (NEW.discount_percent::NUMERIC / 100)), 2);
   ELSE
     NEW.discounted_price := 0;
   END IF;
