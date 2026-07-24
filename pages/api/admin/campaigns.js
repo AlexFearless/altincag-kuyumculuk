@@ -70,6 +70,9 @@ async function handlePost(db, req, res) {
     if (!['all', 'category', 'specific_products'].includes(appliesTo || 'all')) {
       return res.status(400).json({ error: 'Geçersiz applies_to değeri' });
     }
+    if ((appliesTo || 'all') === 'category' && (!targetCategory || !targetCategory.trim())) {
+      return res.status(400).json({ error: 'Kategori kapsam seçildiğinde hedef kategori zorunludur' });
+    }
 
     const { data: campaign, error } = await db
       .from('campaigns')
@@ -81,7 +84,7 @@ async function handlePost(db, req, res) {
         end_date: endDate,
         is_active: isActive !== false,
         applies_to: appliesTo || 'all',
-        target_category: targetCategory || null,
+        target_category: (appliesTo || 'all') === 'category' ? targetCategory.trim() : null,
         target_products: targetProducts || [],
       })
       .select()
@@ -89,11 +92,27 @@ async function handlePost(db, req, res) {
 
     if (error) throw error;
 
+    if (isActive !== false) {
+      const categoryText = (appliesTo || 'all') === 'category' && targetCategory ? ` (${targetCategory})` : '';
+      const discountText = discountType === 'percent' ? `%${discountValue}` : `${discountValue} TL`;
+      try {
+        await db.from('announcements').update({ is_active: false }).eq('is_active', true);
+        await db.from('announcements').insert({
+          title: `Kampanya: ${name.trim()}`,
+          message: `${discountText} indirim${categoryText} - ${new Date(startDate).toLocaleDateString('tr-TR')} ile ${new Date(endDate).toLocaleDateString('tr-TR')} arası geçerli!`,
+          bg_color: '#C8A96E',
+          text_color: '#FFFFFF',
+          is_active: true,
+          created_by: req.admin?.email || 'admin',
+        });
+      } catch (e) { console.error('Campaign announcement error:', e); }
+    }
+
     createLog(db, { action: `Kampanya oluşturuldu: ${campaign.name}`, adminEmail: req.admin?.email || 'admin', targetType: 'campaign', targetId: campaign.id, details: { name: campaign.name, discountType: campaign.discount_type, discountValue: campaign.discount_value }, req });
     res.status(201).json({ success: true, campaign: mapCampaign(campaign) });
   } catch (error) {
-    console.error('Admin campaigns POST error:', error);
-    res.status(500).json({ error: 'Kampanya eklenirken hata oluştu' });
+    console.error('Admin campaigns POST error:', error?.message || error);
+    res.status(500).json({ error: 'Kampanya eklenirken hata oluştu: ' + (error?.message || 'Bilinmeyen hata') });
   }
 }
 
@@ -116,7 +135,7 @@ async function handlePut(db, req, res) {
     if (endDate !== undefined) updateData.end_date = endDate;
     if (isActive !== undefined) updateData.is_active = !!isActive;
     if (appliesTo !== undefined) updateData.applies_to = appliesTo;
-    if (targetCategory !== undefined) updateData.target_category = targetCategory || null;
+    if (targetCategory !== undefined) updateData.target_category = (appliesTo === 'category' || updateData.applies_to === 'category') ? (targetCategory || '').trim() || null : null;
     if (targetProducts !== undefined) updateData.target_products = targetProducts;
 
     updateData.updated_at = new Date().toISOString();

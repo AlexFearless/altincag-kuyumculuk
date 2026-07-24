@@ -263,7 +263,7 @@ export default function AdminCampaigns() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-earth-500">
-                        {campaign.appliesTo === 'all' ? 'Tüm Ürünler' : campaign.appliesTo === 'category' ? `Kategori: ${campaign.targetCategory}` : 'Seçili Ürünler'}
+                        {campaign.appliesTo === 'all' ? 'Tüm Ürünler' : campaign.appliesTo === 'category' ? `Kategori: ${campaign.targetCategory || 'Tüm Kategoriler'}` : 'Seçili Ürünler'}
                       </td>
                       <td className="px-6 py-4 text-sm text-earth-500">
                         {new Date(campaign.startDate).toLocaleDateString('tr-TR')} - {new Date(campaign.endDate).toLocaleDateString('tr-TR')}
