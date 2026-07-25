@@ -2,14 +2,16 @@ import { getDb } from '@/lib/supabase';
 import { sanitize, validateEmail } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/rateLimit';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '@/lib/secrets';
 
+const JWT_SECRET = getJwtSecret();
 const msgLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla mesaj. 1 dakika bekleyin.' });
 
 async function verifyAdminToken(db, req) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   try {
-    const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
+    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
     const { data: admin } = await db.from('admins').select('id, name, is_active').eq('id', decoded.id).single();
     if (!admin || !admin.is_active) return null;
     return admin;

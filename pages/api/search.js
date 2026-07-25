@@ -1,9 +1,14 @@
 import { getDbPublic } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rateLimit';
+
+const searchLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla arama. 1 dakika bekleyin.' });
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!searchLimiter(req, res)) return;
 
   try {
     let db;

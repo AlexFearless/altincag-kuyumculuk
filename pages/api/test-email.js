@@ -1,10 +1,23 @@
 import sgMail from '@sendgrid/mail';
+import { getSendgridApiKey, getSendgridFromEmail } from '@/lib/secrets';
+import { rateLimit } from '@/lib/rateLimit';
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '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');
+const SENDGRID_API_KEY = getSendgridApiKey();
+const FROM_EMAIL = getSendgridFromEmail();
+
+if (SENDGRID_API_KEY) sgMail.setApiKey(SENDGRID_API_KEY);
+
+const testLimiter = rateLimit({ windowMs: 300000, max: 3, message: 'Çok fazla test. 5 dakika bekleyin.' });
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!testLimiter(req, res)) return;
+
+  if (!SENDGRID_API_KEY) {
+    return res.status(500).json({ error: 'SendGrid API key not configured' });
   }
 
   try {
@@ -14,7 +27,7 @@ export default async function handler(req, res) {
     }
 
     const result = await sgMail.send({
-      from: process.env.SENDGRID_FROM_EMAIL || 'info@altincagkuyumculuk.com',
+      from: FROM_EMAIL,
       to: email,
       subject: 'AltınÇağ Kuyumculuk - Test E-postası',
       html: '<h1>Test başarılı!</h1><p>SendGrid API doğru çalışıyor. E-posta doğrulama sistemi aktif.</p>',

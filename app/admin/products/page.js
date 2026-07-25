@@ -34,6 +34,7 @@ export default function AdminProducts() {
     name: '',
     description: '',
     price: '',
+    costPrice: '',
     category: 'yuzuk',
     stock: '',
     karat: '',
@@ -154,6 +155,7 @@ export default function AdminProducts() {
       name: product.name,
       description: product.description || '',
       price: product.price,
+      costPrice: product.cost_price || '',
       category: product.category,
       stock: product.stock,
       karat: product.karat || '',
@@ -268,6 +270,7 @@ export default function AdminProducts() {
       name: '',
       description: '',
       price: '',
+      costPrice: '',
       category: 'yuzuk',
       stock: '',
       karat: '',
@@ -400,8 +403,9 @@ export default function AdminProducts() {
         )}
 
         {loading ? (
-          <div className="text-center py-12">
-            <div className="w-12 h-12 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="flex items-center justify-center py-8">
+            <div className="w-5 h-5 border-2 border-gold-500 border-t-transparent rounded-full animate-spin mr-2" />
+            <span className="text-sm text-earth-500">Yükleniyor...</span>
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -426,6 +430,9 @@ export default function AdminProducts() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-earth-500 uppercase">
                     Fiyat
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-earth-500 uppercase">
+                    Maliyet
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-earth-500 uppercase">
                     İndirim
@@ -472,6 +479,9 @@ export default function AdminProducts() {
                     </td>
                     <td className="px-6 py-4 text-sm text-earth-700">
                       {product.price.toLocaleString('tr-TR')} TL
+                    </td>
+                    <td className="px-6 py-4 text-sm text-orange-500">
+                      {product.cost_price > 0 ? `${product.cost_price.toLocaleString('tr-TR')} TL` : '-'}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       {product.discountPercent > 0 ? (
@@ -572,7 +582,7 @@ export default function AdminProducts() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
-                    Fiyat (TL) *
+                    Satış Fiyatı (TL) *
                   </label>
                   <input
                     type="number"
@@ -583,6 +593,21 @@ export default function AdminProducts() {
                     className="input-field"
                     required
                     min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">
+                    Maliyet (TL)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.costPrice}
+                    onChange={(e) =>
+                      setFormData({ ...formData, costPrice: e.target.value })
+                    }
+                    className="input-field"
+                    min="0"
+                    placeholder="Kaça alındı"
                   />
                 </div>
                 <div>

@@ -1,8 +1,15 @@
 import { getDb } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
 import { sanitize, validateEmail, validatePhone } from '@/lib/sanitize';
+import { getJwtSecret } from '@/lib/secrets';
+import { rateLimit } from '@/lib/rateLimit';
+
+const JWT_SECRET = getJwtSecret();
+const profileLimiter = rateLimit({ windowMs: 60000, max: 20, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 export default async function handler(req, res) {
+  if (!profileLimiter(req, res)) return;
+
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
 
@@ -12,7 +19,7 @@ export default async function handler(req, res) {
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
       }
-      const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
+      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
 
       const { data: user } = await db
         .from('users')
@@ -45,7 +52,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
     }
 
-    const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
+    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
 
     const { name, phone, email, address } = req.body;
     const updateData = {};

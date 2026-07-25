@@ -1,12 +1,17 @@
 import { getDb } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimit';
 import { applyCampaignDiscounts } from '@/lib/campaignDiscounts';
+import crypto from 'crypto';
 
 const cartLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla sepet işlemi. 1 dakika bekleyin.' });
 
 function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
   return forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
+}
+
+function generateGuestId() {
+  return 'guest_' + crypto.randomBytes(16).toString('hex');
 }
 
 async function getCartWithProducts(db, guestId) {
@@ -54,22 +59,22 @@ async function getCartWithProducts(db, guestId) {
 
 export default async function handler(req, res) {
   let db;
-  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }
 
   if (req.method !== 'GET' && !cartLimiter(req, res)) return;
 
   try {
-    const guestId = req.headers['x-guest-id'];
+    let guestId = req.headers['x-guest-id'];
     const ipAddress = getClientIp(req);
 
     if (!guestId || typeof guestId !== 'string' || guestId.length > 100) {
-      return res.status(400).json({ error: 'Geçersiz istek' });
+      guestId = generateGuestId();
     }
 
     switch (req.method) {
       case 'GET': {
         const items = await getCartWithProducts(db, guestId);
-        return res.status(200).json({ items });
+        return res.status(200).json({ items, guestId });
       }
 
       case 'POST': {
@@ -115,7 +120,7 @@ export default async function handler(req, res) {
         }
 
         const items = await getCartWithProducts(db, guestId);
-        return res.status(200).json({ items });
+        return res.status(200).json({ items, guestId });
       }
 
       case 'PUT': {
@@ -139,7 +144,7 @@ export default async function handler(req, res) {
         }
 
         const items = await getCartWithProducts(db, guestId);
-        return res.status(200).json({ items });
+        return res.status(200).json({ items, guestId });
       }
 
       case 'DELETE': {
@@ -156,7 +161,7 @@ export default async function handler(req, res) {
         }
 
         const items = await getCartWithProducts(db, guestId);
-        return res.status(200).json({ items });
+        return res.status(200).json({ items, guestId });
       }
 
       default:

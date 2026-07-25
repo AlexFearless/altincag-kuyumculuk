@@ -1,13 +1,18 @@
 import { getDb } from '@/lib/supabase';
+import crypto from 'crypto';
 import { rateLimit } from '@/lib/rateLimit';
 import sgMail from '@sendgrid/mail';
+import { getSendgridApiKey, getSendgridFromEmail } from '@/lib/secrets';
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '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');
+const SENDGRID_API_KEY = getSendgridApiKey();
+const FROM_EMAIL = getSendgridFromEmail();
+
+if (SENDGRID_API_KEY) sgMail.setApiKey(SENDGRID_API_KEY);
 
 const limiter = rateLimit({ windowMs: 60000, max: 3, message: 'Çok fazla deneme. 1 dakika bekleyin.' });
 
 function generateCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 999999).toString();
 }
 
 export default async function handler(req, res) {
@@ -55,7 +60,7 @@ export default async function handler(req, res) {
     let emailError = null;
     try {
       await sgMail.send({
-        from: process.env.SENDGRID_FROM_EMAIL || 'info@altincagkuyumculuk.com',
+        from: FROM_EMAIL,
         to: cleanEmail,
         subject: 'AltınÇağ Kuyumculuk - Yeni Doğrulama Kodu',
         html: `
@@ -80,7 +85,7 @@ export default async function handler(req, res) {
       emailError = err.message;
     }
 
-    res.status(200).json({ success: true, message: 'Doğrulama kodu gönderildi', emailSent, emailError });
+    res.status(200).json({ success: true, message: 'Doğrulama kodu gönderildi', emailSent });
   } catch (error) {
     console.error('Send verification error:', error);
     res.status(500).json({ error: 'Kod gönderilemedi' });

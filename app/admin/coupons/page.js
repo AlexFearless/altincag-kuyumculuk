@@ -164,9 +164,12 @@ export default function AdminCoupons() {
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_refresh_token');
     localStorage.removeItem('admin_info');
     sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_refresh_token');
     sessionStorage.removeItem('admin_info');
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     router.push('/admin/login');
   };
 
@@ -209,11 +212,14 @@ export default function AdminCoupons() {
           </div>
         )}
 
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="w-12 h-12 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-5 h-5 border-2 border-gold-500 border-t-transparent rounded-full animate-spin mr-2" />
+            <span className="text-sm text-earth-500">Yükleniyor...</span>
           </div>
-        ) : coupons.length === 0 ? (
+        )}
+
+        {!loading && coupons.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow-sm">
             <p className="text-earth-400">Henüz kupon eklenmemiş.</p>
           </div>

@@ -60,15 +60,19 @@ export default function AdminLogin() {
       // Önceki kayıtları temizle
       localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_info');
+      localStorage.removeItem('admin_refresh_token');
       sessionStorage.removeItem('admin_token');
       sessionStorage.removeItem('admin_info');
+      sessionStorage.removeItem('admin_refresh_token');
 
       if (rememberMe) {
         localStorage.setItem('admin_token', data.token);
         localStorage.setItem('admin_info', JSON.stringify(data.admin));
+        if (data.refreshToken) localStorage.setItem('admin_refresh_token', data.refreshToken);
       } else {
         sessionStorage.setItem('admin_token', data.token);
         sessionStorage.setItem('admin_info', JSON.stringify(data.admin));
+        if (data.refreshToken) sessionStorage.setItem('admin_refresh_token', data.refreshToken);
       }
       router.push('/admin');
     } catch (err) {

@@ -1,6 +1,8 @@
 import { getDb } from '@/lib/supabase';
-import jwt from 'jsonwebtoken';
 import { rateLimit } from '@/lib/rateLimit';
+import { generateTokenPair } from '@/lib/auth';
+import { setTokenCookies } from '@/lib/cookies';
+import crypto from 'crypto';
 
 const limiter = rateLimit({ windowMs: 60000, max: 5, message: 'Çok fazla deneme. 1 dakika bekleyin.' });
 
@@ -26,7 +28,7 @@ export default async function handler(req, res) {
 
     const { data: user } = await db
       .from('users')
-      .select('*')
+      .select('id, name, email, phone, email_verified, verification_code, verification_expires')
       .eq('email', email.toLowerCase().trim())
       .single();
 
@@ -60,12 +62,16 @@ export default async function handler(req, res) {
       })
       .eq('id', user.id);
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here', { expiresIn: '5y' });
+    const { accessToken, refreshToken, expiresIn } = await generateTokenPair(user.id, 'user');
+
+    setTokenCookies(res, accessToken, refreshToken);
 
     res.status(200).json({
       success: true,
       message: 'E-posta başarıyla doğrulandı',
-      token,
+      token: accessToken,
+      refreshToken,
+      expiresIn,
       user: { id: user.id, name: user.name, email: user.email, phone: user.phone },
     });
   } catch (error) {

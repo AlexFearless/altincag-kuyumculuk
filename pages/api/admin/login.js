@@ -1,7 +1,8 @@
 import { getDb } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
-import { generateToken } from '@/lib/auth';
 import { rateLimit } from '@/lib/rateLimit';
+import { generateTokenPair } from '@/lib/auth';
+import { setTokenCookies } from '@/lib/cookies';
 
 const loginLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla deneme. 1 dakika bekleyin.' });
 
@@ -27,7 +28,7 @@ export default async function handler(req, res) {
 
     const { data: admin } = await db
       .from('admins')
-      .select('*')
+      .select('id, email, name, role, is_active, password')
       .eq('email', email.toLowerCase())
       .single();
 
@@ -46,11 +47,15 @@ export default async function handler(req, res) {
 
     await db.from('admins').update({ last_login: new Date().toISOString() }).eq('id', admin.id);
 
-    const token = generateToken(admin.id);
+    const { accessToken, refreshToken, expiresIn } = await generateTokenPair(admin.id, 'admin');
+
+    setTokenCookies(res, accessToken, refreshToken);
 
     res.status(200).json({
       success: true,
-      token,
+      token: accessToken,
+      refreshToken,
+      expiresIn,
       admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role },
     });
   } catch (error) {

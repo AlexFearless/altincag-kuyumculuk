@@ -3,10 +3,13 @@ import { getDb } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 import { createLog } from '@/pages/api/admin/logs';
 import { sanitize, validateEmail, validatePhone } from '@/lib/sanitize';
+import { getJwtSecret } from '@/lib/secrets';
+
+const JWT_SECRET = getJwtSecret();
 
 async function verifyAdminActive(db, token) {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
+    const decoded = jwt.verify(token, JWT_SECRET);
     const { data: admin } = await db
       .from('admins')
       .select('id, is_active, email')
@@ -78,7 +81,7 @@ export default async function handler(req, res) {
       }
       if (password !== undefined && String(password).trim()) {
         if (String(password).length < 6) return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı' });
-        updateData.password = await bcrypt.hash(String(password), 12);
+        updateData.password = await bcrypt.hash(String(password), 14);
       }
       if (isActive !== undefined) updateData.is_active = !!isActive;
 
@@ -122,7 +125,7 @@ export default async function handler(req, res) {
       const { data: existing } = await db.from('users').select('id').eq('email', cleanEmail).single();
       if (existing) return res.status(409).json({ error: 'Bu e-posta adresi zaten kayıtlı' });
 
-      const hashedPassword = await bcrypt.hash(password, 12);
+      const hashedPassword = await bcrypt.hash(password, 14);
       const { data: user, error: insertError } = await db
         .from('users')
         .insert({

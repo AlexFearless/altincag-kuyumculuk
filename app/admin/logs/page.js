@@ -59,11 +59,14 @@ export default function AdminLogs() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="w-12 h-12 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-5 h-5 border-2 border-gold-500 border-t-transparent rounded-full animate-spin mr-2" />
+            <span className="text-sm text-earth-500">Yükleniyor...</span>
           </div>
-        ) : logs.length === 0 ? (
+        )}
+
+        {!loading && logs.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg">
             <p className="text-earth-400">Henüz log yok.</p>
           </div>

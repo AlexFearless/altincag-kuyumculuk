@@ -1,7 +1,8 @@
 import { getDb } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { rateLimit } from '@/lib/rateLimit';
+import { generateTokenPair } from '@/lib/auth';
+import { setTokenCookies } from '@/lib/cookies';
 
 const limiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla deneme. 1 dakika bekleyin.' });
 
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
 
     const { data: user } = await db
       .from('users')
-      .select('*')
+      .select('id, name, email, phone, address, password, is_active, email_verified')
       .eq('email', cleanEmail)
       .single();
 
@@ -57,11 +58,15 @@ export default async function handler(req, res) {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '';
     await db.from('users').update({ last_login_ip: ip }).eq('id', user.id);
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here', { expiresIn: '5y' });
+    const { accessToken, refreshToken, expiresIn } = await generateTokenPair(user.id, 'user');
+
+    setTokenCookies(res, accessToken, refreshToken);
 
     res.status(200).json({
       success: true,
-      token,
+      token: accessToken,
+      refreshToken,
+      expiresIn,
       user: {
         id: user.id,
         name: user.name,

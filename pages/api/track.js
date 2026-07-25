@@ -1,40 +1,51 @@
-import { getDbPublic } from '@/lib/supabase';
+import { getDb } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rateLimit';
+import crypto from 'crypto';
+
+const trackLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla sorgu. 1 dakika bekleyin.' });
+
+function generateTrackToken(orderId) {
+  const secret = process.env.JWT_SECRET || 'fallback';
+  return crypto.createHmac('sha256', secret).update(orderId).digest('hex').substring(0, 16);
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  if (!trackLimiter(req, res)) return;
+
   try {
     let db;
-    try { db = getDbPublic(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }
 
-    const { code } = req.query;
+    const { code, token } = req.query;
     if (!code || typeof code !== 'string' || code.trim().length < 3) {
       return res.status(400).json({ error: 'Geçerli bir sipariş veya kargo kodu girin' });
     }
 
-    const trimmedCode = code.trim();
+    const trimmedCode = code.trim().toUpperCase();
 
     let { data: order } = await db
       .from('orders')
-      .select('*, order_items(*, products(name, images))')
-      .eq('order_number', trimmedCode.toUpperCase())
+      .select('id, order_number, tracking_number, order_status, payment_method, total_amount, created_at, updated_at')
+      .eq('order_number', trimmedCode)
       .single();
 
     if (!order) {
       const { data: order2 } = await db
         .from('orders')
-        .select('*, order_items(*, products(name, images))')
-        .eq('tracking_number', trimmedCode.toUpperCase())
+        .select('id, order_number, tracking_number, order_status, payment_method, total_amount, created_at, updated_at')
+        .eq('tracking_number', trimmedCode)
         .single();
       order = order2;
     }
     if (!order) {
       const { data: order3 } = await db
         .from('orders')
-        .select('*, order_items(*, products(name, images))')
-        .eq('tracking_number', trimmedCode)
+        .select('id, order_number, tracking_number, order_status, payment_method, total_amount, created_at, updated_at')
+        .eq('tracking_number', code.trim())
         .single();
       order = order3;
     }
@@ -42,6 +53,24 @@ export default async function handler(req, res) {
     if (!order) {
       return res.status(404).json({ error: 'Sipariş bulunamadı. Kodu kontrol edin.' });
     }
+
+    const expectedToken = generateTrackToken(order.id);
+    if (token !== expectedToken) {
+      return res.status(200).json({
+        success: true,
+        order: {
+          orderNumber: order.order_number,
+          status: order.order_status,
+          createdAt: order.created_at,
+        },
+        requiresToken: true,
+      });
+    }
+
+    const { data: orderItems } = await db
+      .from('order_items')
+      .select('name, price, quantity, products(name)')
+      .eq('order_id', order.id);
 
     const steps = [
       { key: 'pending', label: 'Sipariş Alındı', icon: 'order' },
@@ -59,10 +88,9 @@ export default async function handler(req, res) {
       status: isCancelled ? 'cancelled' : idx < currentIdx ? 'done' : idx === currentIdx ? 'active' : 'waiting',
     }));
 
-    const items = (order.order_items || []).map(i => ({
+    const items = (orderItems || []).map(i => ({
       name: i.products?.name || i.name,
       quantity: i.quantity,
-      price: i.price,
     }));
 
     res.status(200).json({

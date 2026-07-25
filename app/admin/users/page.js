@@ -144,9 +144,12 @@ export default function AdminUsers() {
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_refresh_token');
     localStorage.removeItem('admin_info');
     sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_refresh_token');
     sessionStorage.removeItem('admin_info');
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     router.push('/admin/login');
   };
 
@@ -227,11 +230,14 @@ export default function AdminUsers() {
           </div>
         )}
 
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="w-8 h-8 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-5 h-5 border-2 border-gold-500 border-t-transparent rounded-full animate-spin mr-2" />
+            <span className="text-sm text-earth-500">Yükleniyor...</span>
           </div>
-        ) : filteredUsers.length === 0 ? (
+        )}
+
+        {!loading && filteredUsers.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-8 text-center">
             <p className="text-earth-400">Kullanıcı bulunamadı.</p>
           </div>

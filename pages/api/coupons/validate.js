@@ -1,9 +1,14 @@
 import { getDbPublic } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rateLimit';
+
+const couponLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla kupon denemesi. 1 dakika bekleyin.' });
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!couponLimiter(req, res)) return;
 
   let db;
   try { db = getDbPublic(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }

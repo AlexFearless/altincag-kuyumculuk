@@ -22,7 +22,7 @@ export default function AdminAnnouncements() {
   async function fetchAnnouncements() {
     try {
       const res = await fetch('/api/admin/announcements', { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } });
-      if (res.status === 401 || res.status === 403) { localStorage.removeItem('admin_token'); router.push('/admin/login'); return; }
+      if (res.status === 401 || res.status === 403) { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_refresh_token'); fetch('/api/auth/logout', { method: 'POST' }).catch(() => {}); router.push('/admin/login'); return; }
       const data = await res.json();
       setAnnouncements(data.announcements || []);
     } catch { } finally { setLoading(false); }
@@ -82,7 +82,7 @@ export default function AdminAnnouncements() {
           </div>
           <div className="flex gap-3">
             <button onClick={openNew} className="bg-gold-500 text-white px-4 py-2 rounded-lg hover:bg-gold-600">+ Yeni Duyuru</button>
-            <button onClick={() => { localStorage.removeItem('admin_token'); router.push('/admin/login'); }} className="text-red-500 hover:text-red-700">Çıkış Yap</button>
+            <button onClick={() => { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_refresh_token'); fetch('/api/auth/logout', { method: 'POST' }).catch(() => {}); router.push('/admin/login'); }} className="text-red-500 hover:text-red-700">Çıkış Yap</button>
           </div>
         </div>
 

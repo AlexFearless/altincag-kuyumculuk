@@ -8,8 +8,7 @@ import Link from 'next/link';
 export default function AdminDashboard() {
   const [admin, setAdmin] = useState(null);
   const [stats, setStats] = useState({ products: 0, orders: 0, revenue: 0, users: 0, unreadMessages: 0 });
-  const [lowStockProducts, setLowStockProducts] = useState([]);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -21,62 +20,42 @@ export default function AdminDashboard() {
       return;
     }
 
-    if (adminInfo) {
-      setAdmin(JSON.parse(adminInfo));
-    }
-
-    setAuthChecked(true);
+    if (adminInfo) setAdmin(JSON.parse(adminInfo));
     fetchStats(token);
   }, [router]);
 
   const fetchStats = async (token) => {
     try {
-      const [productsRes, ordersRes, usersRes, messagesRes] = await Promise.allSettled([
-        fetch('/api/admin/products', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/messages', { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-
-      const get = (r) => r.status === 'fulfilled' ? r.value.json() : Promise.resolve({});
-
-      const [productsData, ordersData, usersData, messagesData] = await Promise.all([
-        get(productsRes), get(ordersRes), get(usersRes), get(messagesRes),
-      ]);
-
+      const res = await fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        if (res.status === 401) { localStorage.removeItem('admin_token'); sessionStorage.removeItem('admin_token'); router.push('/admin/login'); return; }
+        return;
+      }
+      const data = await res.json();
       setStats({
-        products: productsData.total || 0,
-        orders: ordersData.total || 0,
-        revenue: ordersData.orders?.reduce((sum, o) => {
-          if (o.orderStatus === 'cancelled') return sum;
-          return sum + (o.totalAmount || 0);
-        }, 0) || 0,
-        users: usersData.total || 0,
-        unreadMessages: messagesData.unreadCount || 0,
+        products: data.products || 0,
+        orders: data.orders || 0,
+        revenue: data.revenue || 0,
+        users: data.users || 0,
+        unreadMessages: data.unreadMessages || 0,
       });
-
-      const allProducts = productsData.products || [];
-      setLowStockProducts(allProducts.filter(p => p.stock <= 3 && p.is_active));
     } catch (error) {
       console.error('Stats error:', error);
+    } finally {
+      setStatsLoading(false);
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_info');
+    localStorage.removeItem('admin_refresh_token');
     sessionStorage.removeItem('admin_token');
     sessionStorage.removeItem('admin_info');
+    sessionStorage.removeItem('admin_refresh_token');
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     router.push('/admin/login');
   };
-
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen bg-earth-50 flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-gold-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-earth-50">
@@ -106,6 +85,12 @@ export default function AdminDashboard() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-serif text-xl font-bold text-earth-800">Genel Bakış</h2>
+          {statsLoading && (
+            <div className="w-5 h-5 border-2 border-gold-500 border-t-transparent rounded-full animate-spin" />
+          )}
+        </div>
         <div className="grid md:grid-cols-5 gap-6 mb-8">
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-between">
@@ -169,22 +154,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-
-        {lowStockProducts.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
-            <h3 className="font-serif text-lg font-bold text-red-800 mb-4">Düşük Stok Uyarısı</h3>
-            <div className="space-y-2">
-              {lowStockProducts.map(product => (
-                <div key={product.id} className="flex items-center justify-between bg-white rounded-lg p-3 border border-red-100">
-                  <span className="text-sm font-medium text-earth-800">{product.name}</span>
-                  <span className={`text-sm font-bold ${product.stock === 0 ? 'text-red-600' : 'text-orange-500'}`}>
-                    {product.stock === 0 ? 'Tükendi' : `${product.stock} adet kaldı`}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="grid md:grid-cols-2 gap-6">
           <Link

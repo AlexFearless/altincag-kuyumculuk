@@ -237,11 +237,14 @@ export default function AdminOrders() {
           </button>
         </div>
 
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="w-12 h-12 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-5 h-5 border-2 border-gold-500 border-t-transparent rounded-full animate-spin mr-2" />
+            <span className="text-sm text-earth-500">Yükleniyor...</span>
           </div>
-        ) : orders.length === 0 ? (
+        )}
+
+        {!loading && orders.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg">
             <p className="text-earth-400">Henüz sipariş bulunmuyor.</p>
           </div>

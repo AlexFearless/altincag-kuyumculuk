@@ -1,11 +1,18 @@
 import { getDb } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
 import { sanitize } from '@/lib/sanitize';
+import { getJwtSecret } from '@/lib/secrets';
+import { rateLimit } from '@/lib/rateLimit';
+
+const JWT_SECRET = getJwtSecret();
+const messagesLimiter = rateLimit({ windowMs: 60000, max: 20, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'PUT') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!messagesLimiter(req, res)) return;
 
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }
@@ -18,7 +25,7 @@ export default async function handler(req, res) {
 
     let userEmail;
     try {
-      const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
+      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
       const { data: user } = await db.from('users').select('email, is_active').eq('id', decoded.id).single();
       if (!user || !user.is_active) {
         return res.status(401).json({ error: 'Hesap bulunamadı veya pasif' });

@@ -40,6 +40,7 @@ async function handleGet(db, req, res) {
       slug: p.slug,
       description: p.description,
       price: p.price,
+      cost_price: p.cost_price || 0,
       discountedPrice: p.discounted_price,
       category: p.category,
       images: p.images || [],
@@ -64,7 +65,7 @@ async function handleGet(db, req, res) {
 
 async function handlePost(db, req, res) {
   try {
-    const { name, description, price, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType } = req.body;
+    const { name, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType } = req.body;
     if (!name || !price || !category) {
       return res.status(400).json({ error: 'Ürün adı, fiyat ve kategori zorunludur' });
     }
@@ -92,6 +93,7 @@ async function handlePost(db, req, res) {
         name: sanitize(name.trim()),
         description: sanitize(description || ''),
         price: finalPrice,
+        cost_price: Number(costPrice) || 0,
         discounted_price: discountedPrice,
         category,
         images: filteredImages,
@@ -118,7 +120,7 @@ async function handlePost(db, req, res) {
 
 async function handlePut(db, req, res) {
   try {
-    const { id, name, description, price, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType, isActive, bulkUpdate, productIds, field, value } = req.body;
+    const { id, name, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType, isActive, bulkUpdate, productIds, field, value } = req.body;
 
     if (bulkUpdate && productIds && productIds.length > 0) {
       if (!field || (field !== 'price' && field !== 'stock')) {
@@ -149,6 +151,7 @@ async function handlePut(db, req, res) {
     if (name !== undefined) { if (typeof name !== 'string' || name.length > 200) return res.status(400).json({ error: 'Geçersiz ürün adı' }); updateData.name = sanitize(name.trim()); }
     if (description !== undefined) updateData.description = sanitize(String(description));
     if (price !== undefined) { if (isNaN(Number(price)) || Number(price) < 0) return res.status(400).json({ error: 'Geçersiz fiyat' }); updateData.price = Number(price); }
+    if (costPrice !== undefined) updateData.cost_price = Number(costPrice) || 0;
     if (category !== undefined) updateData.category = category;
     if (images !== undefined) updateData.images = Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.length < 500000).slice(0, 10) : [];
     if (stock !== undefined) updateData.stock = Math.max(0, Number(stock) || 0);

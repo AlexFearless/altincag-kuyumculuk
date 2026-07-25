@@ -1,5 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { getDb } from '@/lib/supabase';
+import { getJwtSecret } from '@/lib/secrets';
+
+const JWT_SECRET = getJwtSecret();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,7 +18,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Token gerekli' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     const { data: admin } = await db
       .from('admins')

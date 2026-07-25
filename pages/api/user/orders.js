@@ -1,10 +1,17 @@
 import { getDb } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '@/lib/secrets';
+import { rateLimit } from '@/lib/rateLimit';
+
+const JWT_SECRET = getJwtSecret();
+const ordersLimiter = rateLimit({ windowMs: 60000, max: 20, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!ordersLimiter(req, res)) return;
 
   try {
     let db;
@@ -17,7 +24,7 @@ export default async function handler(req, res) {
 
     let email;
     try {
-      const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here');
+      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
       const { data: user } = await db
         .from('users')
         .select('email, is_active')

@@ -1,21 +1,26 @@
 import { getDb } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { rateLimit } from '@/lib/rateLimit';
 import { validateEmail, validatePhone, sanitize } from '@/lib/sanitize';
 import sgMail from '@sendgrid/mail';
+import { getSendgridApiKey, getSendgridFromEmail } from '@/lib/secrets';
+import { generateToken } from '@/lib/auth';
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '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');
+const SENDGRID_API_KEY = getSendgridApiKey();
+const FROM_EMAIL = getSendgridFromEmail();
+
+if (SENDGRID_API_KEY) sgMail.setApiKey(SENDGRID_API_KEY);
 
 const limiter = rateLimit({ windowMs: 60000, max: 5, message: 'Çok fazla kayıt denemesi. 1 dakika bekleyin.' });
 
 function generateCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 999999).toString();
 }
 
 async function sendVerificationEmail(email, name, code) {
   await sgMail.send({
-    from: process.env.SENDGRID_FROM_EMAIL || 'info@altincagkuyumculuk.com',
+    from: FROM_EMAIL,
     to: email,
     subject: 'AltınÇağ Kuyumculuk - E-posta Doğrulama Kodu',
     html: `
@@ -81,7 +86,7 @@ export default async function handler(req, res) {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '';
     const verificationCode = generateCode();
     const verificationExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password, 14);
 
     const { data: user, error: insertError } = await db
       .from('users')
@@ -106,23 +111,20 @@ export default async function handler(req, res) {
     }
 
     let emailSent = false;
-    let emailError = null;
     try {
       await sendVerificationEmail(cleanEmail, name.trim(), verificationCode);
       emailSent = true;
     } catch (err) {
       console.error('Email send failed:', err.message);
-      emailError = err.message;
     }
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'altincag_jwt_secret_2024_very_long_and_secure_key_here', { expiresIn: '10m' });
+    const token = generateToken(user.id);
 
     res.status(201).json({
       success: true,
       requiresVerification: true,
       email: cleanEmail,
       emailSent,
-      emailError,
       token,
       user: { id: user.id, name: user.name, email: user.email, phone: user.phone },
     });
