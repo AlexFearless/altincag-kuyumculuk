@@ -21,8 +21,12 @@ export default function AdminProducts() {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [bulkPriceModal, setBulkPriceModal] = useState(false);
   const [bulkStockModal, setBulkStockModal] = useState(false);
+  const [bulkDiscountModal, setBulkDiscountModal] = useState(false);
   const [bulkPriceValue, setBulkPriceValue] = useState('');
   const [bulkStockValue, setBulkStockValue] = useState('');
+  const [bulkDiscountPercent, setBulkDiscountPercent] = useState('');
+  const [bulkDiscountType, setBulkDiscountType] = useState('real');
+  const [bulkDiscountApplying, setBulkDiscountApplying] = useState(false);
   const fileInputRef = useRef(null);
   const router = useRouter();
 
@@ -220,6 +224,37 @@ export default function AdminProducts() {
     );
   };
 
+  const handleBulkDiscount = async () => {
+    if (selectedProducts.length === 0 || !bulkDiscountPercent) return;
+    setBulkDiscountApplying(true);
+    try {
+      const res = await fetch('/api/admin/discount', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          productIds: selectedProducts,
+          discountPercent: Number(bulkDiscountPercent),
+          discountType: bulkDiscountType,
+        }),
+      });
+      if (res.ok) {
+        setBulkDiscountModal(false);
+        setBulkDiscountPercent('');
+        setBulkDiscountType('real');
+        setSelectedProducts([]);
+        setBulkMode(false);
+        fetchProducts();
+      }
+    } catch (error) {
+      console.error('Toplu indirim hatası:', error);
+    } finally {
+      setBulkDiscountApplying(false);
+    }
+  };
+
   const toggleSelectAll = () => {
     if (selectedProducts.length === products.length) {
       setSelectedProducts([]);
@@ -346,6 +381,13 @@ export default function AdminProducts() {
                 className="px-4 py-2 bg-green-600 text-white rounded-sm text-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Toplu Stok Güncelle
+              </button>
+              <button
+                onClick={() => setBulkDiscountModal(true)}
+                disabled={selectedProducts.length === 0}
+                className="px-4 py-2 bg-red-500 text-white rounded-sm text-sm hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Toplu İndirim
               </button>
               <button
                 onClick={() => { setSelectedProducts([]); setBulkMode(false); }}
@@ -845,6 +887,71 @@ export default function AdminProducts() {
                 className="px-6 py-2 bg-green-600 text-white rounded-sm hover:bg-green-700 transition-colors disabled:opacity-50"
               >
                 Uygula
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkDiscountModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6">
+            <h2 className="font-serif text-xl font-bold text-earth-800 mb-4">
+              Toplu İndirim Uygula
+            </h2>
+            <p className="text-sm text-earth-500 mb-4">
+              {selectedProducts.length} ürün seçildi
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-earth-700 mb-1">İndirim Türü</label>
+                <select
+                  value={bulkDiscountType}
+                  onChange={(e) => setBulkDiscountType(e.target.value)}
+                  className="input-field w-full"
+                >
+                  <option value="real">Gerçek İndirim (fiyat düşer)</option>
+                  <option value="fake">Sahte İndirim (sadece üstü çizili göster)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-earth-700 mb-1">İndirim Yüzdesi (%)</label>
+                <input
+                  type="number"
+                  value={bulkDiscountPercent}
+                  onChange={(e) => setBulkDiscountPercent(e.target.value)}
+                  className="input-field"
+                  min="1"
+                  max="100"
+                  placeholder="Örn: 15"
+                />
+              </div>
+              {bulkDiscountType === 'real' && bulkDiscountPercent > 0 && (
+                <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                  Seçili ürünlerin fiyatları %${bulkDiscountPercent} düşecek
+                </p>
+              )}
+              {bulkDiscountType === 'fake' && bulkDiscountPercent > 0 && (
+                <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                  Ürün fiyatları değişmeyecek, eski fiyat üstü çizili gösterilecek
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => { setBulkDiscountModal(false); setBulkDiscountPercent(''); setBulkDiscountType('real'); }}
+                className="px-4 py-2 text-earth-600 hover:text-earth-800"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleBulkDiscount}
+                disabled={!bulkDiscountPercent || Number(bulkDiscountPercent) < 1 || Number(bulkDiscountPercent) > 100 || bulkDiscountApplying}
+                className="px-6 py-2 bg-red-500 text-white rounded-sm hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {bulkDiscountApplying ? 'Uygulanıyor...' : 'İndirim Uygula'}
               </button>
             </div>
           </div>
