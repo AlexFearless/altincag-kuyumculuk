@@ -610,6 +610,9 @@ export default function AdminProducts() {
                     placeholder="Kaça alındı"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     Stok
@@ -624,9 +627,6 @@ export default function AdminProducts() {
                     min="0"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     Kategori *
@@ -645,6 +645,9 @@ export default function AdminProducts() {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     İndirim (%)
@@ -663,9 +666,6 @@ export default function AdminProducts() {
                     max="100"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     İndirim Türü
@@ -682,23 +682,22 @@ export default function AdminProducts() {
                     <option value="fake">Sahte İndirim (sadece üstü çizili göster)</option>
                   </select>
                 </div>
-                <div>
-                  {formData.discountType === 'real' && formData.discountPercent > 0 && (
-                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-800 font-medium">
-                        Satış Fiyatı: {formData.price ? (Number(formData.price) * (1 - formData.discountPercent / 100)).toFixed(2) : '0'} TL
-                      </p>
-                    </div>
-                  )}
-                  {formData.discountType === 'fake' && (
-                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-800 font-medium">
-                        Ürün fiyatı değişmez, eski fiyat üstü çizili gösterilir
-                      </p>
-                    </div>
-                  )}
-                </div>
               </div>
+
+              {(formData.discountType === 'real' && formData.discountPercent > 0) && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800 font-medium">
+                    Satış Fiyatı: {formData.price ? (Number(formData.price) * (1 - formData.discountPercent / 100)).toFixed(2) : '0'} TL
+                  </p>
+                </div>
+              )}
+              {formData.discountType === 'fake' && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 font-medium">
+                    Ürün fiyatı değişmez, eski fiyat üstü çizili gösterilir
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
