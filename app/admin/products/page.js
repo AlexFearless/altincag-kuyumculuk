@@ -927,23 +927,8 @@ export default function AdminProducts() {
                   placeholder="Örn: 15"
                 />
               </div>
-              {bulkDiscountType === 'real' && bulkDiscountPercent > 0 && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-800 font-medium">
-                    Seçili ürünlerin satış fiyatı %{bulkDiscountPercent} düşecek
-                  </p>
-                </div>
-              )}
-              {bulkDiscountType === 'fake' && bulkDiscountPercent > 0 && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800 font-medium">
-                    Sahte indirim uygulanacak
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    Fiyatlar değişmeyecek, eski fiyat üstü çizili gösterilecek
-                  </p>
-                </div>
-              )}
+
+
             </div>
 
             <div className="flex justify-end space-x-3 mt-6">
@@ -1028,23 +1013,8 @@ export default function AdminProducts() {
                 </select>
               </div>
 
-              {discountData.discountType === 'real' && discountData.discountPercent > 0 && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-800 font-medium">
-                    Seçili ürünlerin satış fiyatı %{discountData.discountPercent} düşecek
-                  </p>
-                </div>
-              )}
-              {discountData.discountType === 'fake' && discountData.discountPercent > 0 && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800 font-medium">
-                    Sahte indirim uygulanacak
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    Fiyatlar değişmeyecek, eski fiyat üstü çizili gösterilecek
-                  </p>
-                </div>
-              )}
+
+
             </div>
 
             <div className="flex justify-end space-x-3 mt-6">
