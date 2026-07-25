@@ -927,16 +927,23 @@ export default function AdminProducts() {
                   placeholder="Örn: 15"
                 />
               </div>
-              {bulkDiscountType === 'real' && bulkDiscountPercent > 0 && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-800 font-medium">
-                    Gerçek indirim uygulanacak
-                  </p>
-                  <p className="text-xs text-green-600 mt-1">
-                    Seçili ürünlerin satış fiyatı %${bulkDiscountPercent} düşecek
-                  </p>
-                </div>
-              )}
+              {bulkDiscountType === 'real' && bulkDiscountPercent > 0 && (() => {
+                const selectedItems = products.filter(p => selectedProducts.includes(p._id));
+                const avgPrice = selectedItems.length > 0
+                  ? Math.round(selectedItems.reduce((sum, p) => sum + p.price, 0) / selectedItems.length)
+                  : 0;
+                const salePrice = Math.round(avgPrice * (1 - Number(bulkDiscountPercent) / 100));
+                return (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-800 font-medium">
+                      Satış Fiyatı: {salePrice.toLocaleString('tr-TR')} TL
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      Ortalama {avgPrice.toLocaleString('tr-TR')} TL → %{bulkDiscountPercent} indirimle {salePrice.toLocaleString('tr-TR')} TL
+                    </p>
+                  </div>
+                );
+              })()}
               {bulkDiscountType === 'fake' && bulkDiscountPercent > 0 && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800 font-medium">
