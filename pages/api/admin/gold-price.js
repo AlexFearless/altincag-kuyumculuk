@@ -21,7 +21,10 @@ async function handler(req, res) {
 
 async function handleGet(db, req, res) {
   try {
-    const { data: setting } = await db.from('settings').select('*').eq('key', 'gold_price').single();
+    const { data: setting, error } = await db.from('settings').select('*').eq('key', 'gold_price').single();
+    if (error && error.code === '42P01') {
+      return res.status(200).json({ success: true, settings: { autoUpdate: false, apiKey: '', lastPrice: 0, lastUpdate: null, source: 'manual' }, currentPrice: null, needsMigration: true });
+    }
     const value = setting?.value || { autoUpdate: false, apiKey: '', lastPrice: 0, lastUpdate: null, source: 'manual' };
 
     let currentPrice = null;
@@ -71,11 +74,17 @@ async function handlePut(db, req, res) {
       newValue.source = 'manual';
     }
 
-    const { error } = await db
-      .from('settings')
-      .upsert({ key: 'gold_price', value: newValue, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    const row = { key: 'gold_price', value: newValue, updated_at: new Date().toISOString() };
 
-    if (error) throw error;
+    // Önce insert dene, olmazsa update yap
+    const { error: insertError } = await db.from('settings').insert(row);
+    if (insertError) {
+      const { error: updateError } = await db.from('settings').update({ value: newValue, updated_at: new Date().toISOString() }).eq('key', 'gold_price');
+      if (updateError) {
+        console.error('Settings update error:', updateError);
+        return res.status(500).json({ error: 'Ayarlar güncellenemedi. Supabase SQL Editor\'da scripts/supabase-migration-v5.sql dosyasını çalıştırın.' });
+      }
+    }
 
     createLog(db, {
       action: 'Altın fiyatı ayarları güncellendi',
@@ -88,7 +97,7 @@ async function handlePut(db, req, res) {
     res.status(200).json({ success: true, settings: newValue });
   } catch (error) {
     console.error('Gold price PUT error:', error);
-    res.status(500).json({ error: 'Ayarlar güncellenemedi' });
+    res.status(500).json({ error: 'Ayarlar güncellenemedi. Supabase SQL Editor\'da scripts/supabase-migration-v5.sql dosyasını çalıştırın.' });
   }
 }
 

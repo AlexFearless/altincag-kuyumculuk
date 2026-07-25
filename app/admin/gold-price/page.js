@@ -13,6 +13,7 @@ export default function GoldPricePage() {
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState('');
+  const [needsMigration, setNeedsMigration] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function GoldPricePage() {
         setCurrentPrice(data.currentPrice);
         setApiKeyInput(data.settings.apiKey || '');
         setManualPrice(data.settings.lastPrice ? String(data.settings.lastPrice) : '');
+        if (data.needsMigration) setNeedsMigration(true);
       }
     } catch (e) {
       console.error('Gold price fetch error:', e);
@@ -55,6 +57,7 @@ export default function GoldPricePage() {
         setMessage('Ayarlar kaydedildi');
       } else {
         setMessage(data.error || 'Kaydetme hatası');
+        if (data.needsMigration) setNeedsMigration(true);
       }
     } catch (e) {
       setMessage('Bağlantı hatası');
@@ -105,6 +108,14 @@ export default function GoldPricePage() {
             <h1 className="font-serif text-3xl font-bold text-earth-800">Altın Fiyatı Takibi</h1>
           </div>
         </div>
+
+        {needsMigration && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
+            <p className="text-sm text-yellow-800 font-medium mb-2">⚠️ Veritabanı migrasyonu gerekli</p>
+            <p className="text-xs text-yellow-700 mb-2">settings tablosu bulunamadı. Supabase Dashboard &gt; SQL Editor&apos;da <code className="bg-yellow-100 px-1 rounded">scripts/supabase-migration-v5.sql</code> dosyasını çalıştırın.</p>
+            <a href="https://supabase.com/dashboard/project/_/sql/new" target="_blank" rel="noopener" className="text-xs text-yellow-600 underline hover:text-yellow-800">Supabase SQL Editor &rarr;</a>
+          </div>
+        )}
 
         {message && (
           <div className={`mb-6 p-4 rounded-lg text-sm font-medium ${message.includes('hata') || message.includes('Hata') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
