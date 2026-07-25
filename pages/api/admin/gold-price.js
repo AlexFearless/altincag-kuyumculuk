@@ -1,4 +1,4 @@
-import { getDb } from '@/lib/supabase';
+import { getDb, getDbPublic } from '@/lib/supabase';
 import { withAuth } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
 
@@ -30,10 +30,19 @@ async function handleGet(db, req, res) {
     let currentPrice = null;
     if (value.apiKey && value.autoUpdate) {
       try {
-        const response = await fetch('https://altinapi.com/api/v1/prices/ALTIN', {
+        // Önce GRAM (gram altın) dene, yoksa ALTIN (has altın) kullan
+        let response = await fetch('https://altinapi.com/api/v1/prices/GRAM', {
           headers: { 'X-API-Key': value.apiKey },
           signal: AbortSignal.timeout(10000),
         });
+
+        if (!response.ok) {
+          response = await fetch('https://altinapi.com/api/v1/prices/ALTIN', {
+            headers: { 'X-API-Key': value.apiKey },
+            signal: AbortSignal.timeout(10000),
+          });
+        }
+
         if (response.ok) {
           const data = await response.json();
           currentPrice = {
@@ -110,13 +119,20 @@ async function handleRefresh(db, req, res) {
       return res.status(400).json({ error: 'API anahtarı tanımlı değil' });
     }
 
-    const response = await fetch('https://altinapi.com/api/v1/prices/ALTIN', {
+    // Önce GRAM (gram altın) dene, yoksa ALTIN (has altın) kullan
+    let response = await fetch('https://altinapi.com/api/v1/prices/GRAM', {
       headers: { 'X-API-Key': current.apiKey },
       signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
-      const err = await response.text();
+      response = await fetch('https://altinapi.com/api/v1/prices/ALTIN', {
+        headers: { 'X-API-Key': current.apiKey },
+        signal: AbortSignal.timeout(10000),
+      });
+    }
+
+    if (!response.ok) {
       return res.status(502).json({ error: `API hatası: ${response.status}` });
     }
 
@@ -130,15 +146,18 @@ async function handleRefresh(db, req, res) {
       source: 'api',
     };
 
-    await db
-      .from('settings')
-      .upsert({ key: 'gold_price', value: newValue, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    // upsert yerine insert/update kullan (RLS sorunlarını önler)
+    const row = { key: 'gold_price', value: newValue, updated_at: new Date().toISOString() };
+    const { error: insertError } = await db.from('settings').insert(row);
+    if (insertError) {
+      await db.from('settings').update({ value: newValue, updated_at: new Date().toISOString() }).eq('key', 'gold_price');
+    }
 
     createLog(db, {
       action: 'Altın fiyatı manuel yenilendi',
       adminEmail: req.admin?.email || 'admin',
       targetType: 'system',
-      details: { price, source: 'api' },
+      details: { price, symbol: data.symbol, source: 'api' },
       req,
     });
 
