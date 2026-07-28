@@ -1,8 +1,13 @@
 import { getDb } from '@/lib/supabase';
-import { withAuth } from '@/lib/auth';
+import { withAdminRole } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
+import { rateLimit } from '@/lib/rateLimit';
+
+const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function handler(req, res) {
+  if (!(await adminLimiter(req, res))) return;
+
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
 
@@ -41,7 +46,7 @@ async function handleGet(db, req, res) {
     const to = from + safeLimit - 1;
 
     let query = db.from('campaigns').select('*', { count: 'exact' });
-    if (search) query = query.ilike('name', `%${search}%`);
+    if (search) query = query.ilike('name', `%${String(search).replace(/[%_]/g, '\\$&')}%`);
 
     const { data: campaigns, count } = await query
       .order('created_at', { ascending: false })
@@ -66,6 +71,15 @@ async function handlePost(db, req, res) {
     }
     if (isNaN(Number(discountValue)) || Number(discountValue) < 0) {
       return res.status(400).json({ error: 'Geçersiz indirim değeri' });
+    }
+    if (discountType === 'percent' && Number(discountValue) > 100) {
+      return res.status(400).json({ error: 'Yüzde indirim en fazla %100 olabilir' });
+    }
+    if (new Date(endDate) <= new Date(startDate)) {
+      return res.status(400).json({ error: 'Bitiş tarihi başlangıç tarihinden sonra olmalıdır' });
+    }
+    if (new Date(startDate) < new Date(new Date().setHours(0, 0, 0, 0))) {
+      return res.status(400).json({ error: 'Başlangıç tarihi bugünden önce olamaz' });
     }
     if (!['all', 'category', 'specific_products'].includes(appliesTo || 'all')) {
       return res.status(400).json({ error: 'Geçersiz applies_to değeri' });
@@ -95,8 +109,8 @@ async function handlePost(db, req, res) {
     createLog(db, { action: `Kampanya oluşturuldu: ${campaign.name}`, adminEmail: req.admin?.email || 'admin', targetType: 'campaign', targetId: campaign.id, details: { name: campaign.name, discountType: campaign.discount_type, discountValue: campaign.discount_value }, req });
     res.status(201).json({ success: true, campaign: mapCampaign(campaign) });
   } catch (error) {
-    console.error('Admin campaigns POST error:', error?.message || error);
-    res.status(500).json({ error: 'Kampanya eklenirken hata oluştu: ' + (error?.message || 'Bilinmeyen hata') });
+    console.error('Admin campaigns POST error');
+    res.status(500).json({ error: 'Kampanya eklenirken hata oluştu' });
   }
 }
 
@@ -128,7 +142,11 @@ async function handlePut(db, req, res) {
     } else {
       updateData.target_category = null;
     }
-    if (targetProducts !== undefined) updateData.target_products = targetProducts;
+    if (targetProducts !== undefined) {
+      if (!Array.isArray(targetProducts)) return res.status(400).json({ error: 'Geçersiz ürün listesi' });
+      if (targetProducts.length > 100) return res.status(400).json({ error: 'En fazla 100 ürün seçilebilir' });
+      updateData.target_products = targetProducts.filter(id => typeof id === 'string' && id.length > 0 && id.length < 100);
+    }
 
     updateData.updated_at = new Date().toISOString();
 
@@ -169,4 +187,4 @@ async function handleDelete(db, req, res) {
   }
 }
 
-export default withAuth(handler);
+export default withAdminRole()(handler);

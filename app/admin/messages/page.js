@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch } from '@/lib/adminApi';
 
 export default function AdminMessages() {
   const [messages, setMessages] = useState([]);
@@ -17,28 +18,9 @@ export default function AdminMessages() {
   const selectedMessageIdRef = useRef(null);
   const prevAdminReplyCountRef = useRef(0);
 
-  const getToken = () => localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-
-  const authFetch = async (url, options = {}) => {
-    const token = getToken();
-    return fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options.headers,
-      },
-    });
-  };
-
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
     fetchMessages();
-  }, [router]);
+  }, []);
 
   // Her 8 saniyede bir yenile
   useEffect(() => {
@@ -51,7 +33,7 @@ export default function AdminMessages() {
     if (!selectedMessage) return;
     const interval = setInterval(async () => {
       try {
-        const res = await authFetch('/api/messages');
+        const res = await adminFetch('/api/messages');
         const data = await res.json();
         const updated = data.messages?.find(m => m._id === selectedMessage._id);
         if (updated) setSelectedMessage(updated);
@@ -81,7 +63,7 @@ export default function AdminMessages() {
 
   const fetchMessages = async () => {
     try {
-      const res = await authFetch('/api/messages');
+      const res = await adminFetch('/api/messages');
       const data = await res.json();
       if (res.ok) {
         setMessages(data.messages || []);
@@ -100,7 +82,7 @@ export default function AdminMessages() {
 
   const markAsRead = async (id) => {
     try {
-      await authFetch('/api/messages', {
+      await adminFetch('/api/messages', {
         method: 'PUT',
         body: JSON.stringify({ id, isRead: true }),
       });
@@ -114,7 +96,7 @@ export default function AdminMessages() {
     if (!replyText.trim() || !selectedMessage) return;
     setReplyError('');
     try {
-      const res = await authFetch('/api/messages', {
+      const res = await adminFetch('/api/messages', {
         method: 'PUT',
         body: JSON.stringify({
           id: selectedMessage._id,
@@ -136,7 +118,7 @@ export default function AdminMessages() {
   const deleteMessage = async (id) => {
     if (!confirm('Bu mesajı silmek istediğinize emin misiniz?')) return;
     try {
-      await authFetch(`/api/messages?id=${id}`, { method: 'DELETE' });
+      await adminFetch(`/api/messages?id=${id}`, { method: 'DELETE' });
       setSelectedMessage(null);
       fetchMessages();
     } catch (error) {
@@ -147,7 +129,7 @@ export default function AdminMessages() {
   const handleCloseThread = async () => {
     if (!selectedMessage) return;
     try {
-      await authFetch('/api/messages', {
+      await adminFetch('/api/messages', {
         method: 'PUT',
         body: JSON.stringify({ id: selectedMessage._id, status: 'closed' }),
       });
@@ -405,7 +387,7 @@ export default function AdminMessages() {
                     <p className="text-sm text-green-700">Bu talep kapatılmıştır.</p>
                     <button
                       onClick={async () => {
-                        await authFetch('/api/messages', {
+                        await adminFetch('/api/messages', {
                           method: 'PUT',
                           body: JSON.stringify({ id: selectedMessage._id, status: 'open' }),
                         });

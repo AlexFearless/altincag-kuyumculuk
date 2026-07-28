@@ -1,16 +1,25 @@
 import { getDbPublic } from '@/lib/supabase';
 import { applyCampaignDiscounts } from '@/lib/campaignDiscounts';
+import { rateLimit } from '@/lib/rateLimit';
+
+const productLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  if (!(await productLimiter(req, res))) return;
+
   try {
     let db;
-    try { db = getDbPublic(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+    try { db = getDbPublic(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı' }); }
 
     const { slug } = req.query;
+    if (!slug || typeof slug !== 'string') {
+      return res.status(400).json({ error: 'Geçersiz ürün' });
+    }
+
     const { data: product } = await db
       .from('products')
       .select('*')
@@ -49,7 +58,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({ product: p });
   } catch (error) {
-    console.error('Product detail error:', error);
+    console.error('Product detail error');
     res.status(500).json({ error: 'Ürün yüklenirken hata oluştu' });
   }
 }

@@ -5,7 +5,8 @@ import crypto from 'crypto';
 const trackLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla sorgu. 1 dakika bekleyin.' });
 
 function generateTrackToken(orderId) {
-  const secret = process.env.JWT_SECRET || 'fallback';
+  const secret = process.env.TRACK_TOKEN_SECRET || process.env.JWT_SECRET;
+  if (!secret) throw new Error('TRACK_TOKEN_SECRET not configured');
   return crypto.createHmac('sha256', secret).update(orderId).digest('hex').substring(0, 16);
 }
 
@@ -14,7 +15,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!trackLimiter(req, res)) return;
+  if (!(await trackLimiter(req, res))) return;
 
   try {
     let db;
@@ -60,8 +61,6 @@ export default async function handler(req, res) {
         success: true,
         order: {
           orderNumber: order.order_number,
-          status: order.order_status,
-          createdAt: order.created_at,
         },
         requiresToken: true,
       });
@@ -69,7 +68,7 @@ export default async function handler(req, res) {
 
     const { data: orderItems } = await db
       .from('order_items')
-      .select('name, price, quantity, products(name)')
+      .select('name, quantity')
       .eq('order_id', order.id);
 
     const steps = [

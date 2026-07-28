@@ -77,6 +77,7 @@ function DogrulamaContent() {
       const res = await fetch('/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, code: codeStr }),
       });
       const data = await res.json();
@@ -88,8 +89,8 @@ function DogrulamaContent() {
         return;
       }
 
-      localStorage.setItem('user_token', data.token);
-      localStorage.setItem('user_info', JSON.stringify(data.user));
+      const encoded = encodeURIComponent(JSON.stringify(data.user));
+      document.cookie = `user_info=${encoded}; Path=/; Max-Age=86400; SameSite=Lax`;
       setSuccess(true);
 
       setTimeout(() => {
@@ -109,6 +110,7 @@ function DogrulamaContent() {
       const res = await fetch('/api/auth/send-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email }),
       });
       const data = await res.json();

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch, adminLogout } from '@/lib/adminApi';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -22,19 +23,13 @@ export default function AdminUsers() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
-    fetchUsers(token);
-  }, [router]);
+    fetchUsers();
+  }, []);
 
-  const fetchUsers = async (token) => {
+  const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch('/api/admin/users', { credentials: 'include' });
+      if (res.status === 401) { router.push('/admin/login'); return; }
       const data = await res.json();
       setUsers(data.users || []);
     } catch (error) {
@@ -45,17 +40,12 @@ export default function AdminUsers() {
   };
 
   const handleToggleActive = async (userId, currentStatus) => {
-    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
     try {
-      await fetch('/api/admin/users', {
+      await adminFetch('/api/admin/users', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ id: userId, isActive: !currentStatus }),
       });
-      fetchUsers(token);
+      fetchUsers();
     } catch (error) {
       console.error('Güncelleme hatası:', error);
     }
@@ -63,13 +53,11 @@ export default function AdminUsers() {
 
   const handleDelete = async (userId) => {
     if (!confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')) return;
-    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
     try {
-      await fetch(`/api/admin/users?id=${userId}`, {
+      await adminFetch(`/api/admin/users?id=${userId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
-      fetchUsers(token);
+      fetchUsers();
     } catch (error) {
       console.error('Silme hatası:', error);
     }
@@ -79,11 +67,8 @@ export default function AdminUsers() {
     setSelectedUser(user);
     setLoadingOrders(true);
     setUserOrders([]);
-    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
     try {
-      const res = await fetch(`/api/admin/orders?userId=${user._id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`/api/admin/orders?userId=${user._id}`, { credentials: 'include' });
       const data = await res.json();
       setUserOrders(data.orders || []);
     } catch (error) {
@@ -108,14 +93,9 @@ export default function AdminUsers() {
     if (!editingUser) return;
     setSaving(true);
     setSaveMsg('');
-    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
     try {
-      const res = await fetch('/api/admin/users', {
+      const res = await adminFetch('/api/admin/users', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           id: editingUser._id,
           name: editForm.name,
@@ -128,7 +108,7 @@ export default function AdminUsers() {
       if (!res.ok) throw new Error(data.error);
       setSaveMsg('Kullanıcı güncellendi');
       setEditingUser(null);
-      fetchUsers(token);
+      fetchUsers();
     } catch (error) {
       setSaveMsg(error.message);
     } finally {
@@ -143,14 +123,7 @@ export default function AdminUsers() {
   );
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_refresh_token');
-    localStorage.removeItem('admin_info');
-    sessionStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_refresh_token');
-    sessionStorage.removeItem('admin_info');
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    router.push('/admin/login');
+    adminLogout();
   };
 
   const handleCreateUser = async () => {
@@ -164,18 +137,16 @@ export default function AdminUsers() {
     }
     setCreating(true);
     setCreateMsg('');
-    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
     try {
-      const res = await fetch('/api/admin/users', {
+      const res = await adminFetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(createForm),
       });
       const data = await res.json();
       if (res.ok) {
         setShowCreateModal(false);
         setCreateForm({ name: '', email: '', phone: '', password: '' });
-        fetchUsers(token);
+        fetchUsers();
         setSaveMsg('Kullanıcı oluşturuldu');
         setTimeout(() => setSaveMsg(''), 3000);
       } else {

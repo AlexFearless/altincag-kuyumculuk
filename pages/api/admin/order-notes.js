@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/supabase';
-import { withAuth } from '@/lib/auth';
+import { withAdminRole } from '@/lib/auth';
 import { sanitize } from '@/lib/sanitize';
 
 async function handler(req, res) {
@@ -65,4 +65,4 @@ async function handleDelete(db, req, res) {
   }
 }
 
-export default withAuth(handler);
+export default withAdminRole()(handler);

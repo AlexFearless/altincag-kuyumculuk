@@ -1,14 +1,12 @@
 import crypto from 'crypto';
+import { withAuth } from '@/lib/auth';
+import { getClientIp } from '@/lib/getClientIp';
 
 const PAYTR_MERCHANT_ID = process.env.PAYTR_MERCHANT_ID;
 const PAYTR_MERCHANT_KEY = process.env.PAYTR_MERCHANT_KEY;
 const PAYTR_MERCHANT_SALT = process.env.PAYTR_MERCHANT_SALT;
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+async function handler(req, res) {
   try {
     const {
       merchantOid,
@@ -21,9 +19,7 @@ export default async function handler(req, res) {
       testMode,
     } = req.body;
 
-    const userIp =
-      req.headers['x-forwarded-for']?.split(',')[0].trim() ||
-      req.socket.remoteAddress;
+    const userIp = getClientIp(req);
 
     const paytrToken = generatePaytrToken({
       user_ip: userIp,
@@ -47,6 +43,8 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'Ödeme token oluşturulamadı' });
   }
 }
+
+export default withAuth(handler);
 
 function generatePaytrToken(params) {
   const hashStr = [
@@ -78,5 +76,10 @@ export function verifyPaytrCallback(params) {
 
   const hmac = crypto.createHmac('sha256', PAYTR_MERCHANT_KEY);
   hmac.update(hashStr + PAYTR_MERCHANT_SALT);
-  return hmac.digest('base64') === params.hash;
+  const expected = hmac.digest('base64');
+  if (!params.hash || typeof params.hash !== 'string') return false;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(params.hash);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }

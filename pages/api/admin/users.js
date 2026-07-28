@@ -4,19 +4,23 @@ import bcrypt from 'bcryptjs';
 import { createLog } from '@/pages/api/admin/logs';
 import { sanitize, validateEmail, validatePhone } from '@/lib/sanitize';
 import { getJwtSecret } from '@/lib/secrets';
+import { rateLimit } from '@/lib/rateLimit';
+import { parseCookies, getTokenFromRequest } from '@/lib/cookieUtils';
+import { revokeAllUserTokens } from '@/lib/auth';
 
 const JWT_SECRET = getJwtSecret();
+const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function verifyAdminActive(db, token) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const { data: admin } = await db
       .from('admins')
-      .select('id, is_active, email')
+      .select('id, is_active, email, role')
       .eq('id', decoded.id)
       .single();
     if (!admin || !admin.is_active) return null;
-    return { id: decoded.id, email: admin.email };
+    return { id: decoded.id, email: admin.email, role: admin.role };
   } catch {
     return null;
   }
@@ -38,15 +42,21 @@ function mapUser(u) {
 }
 
 export default async function handler(req, res) {
+  if (!(await adminLimiter(req, res))) return;
+
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = getTokenFromRequest(req);
+  if (!token) {
     return res.status(401).json({ error: 'Yetki gerekli' });
   }
-  const adminData = await verifyAdminActive(db, authHeader.split(' ')[1]);
+  const adminData = await verifyAdminActive(db, token);
   if (!adminData) return res.status(401).json({ error: 'Geçersiz veya pasif hesap' });
+
+  if (!adminData.role || !['super_admin', 'admin'].includes(adminData.role)) {
+    return res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
+  }
 
   if (req.method === 'GET') {
     try {
@@ -80,7 +90,19 @@ export default async function handler(req, res) {
         updateData.phone = sanitize(String(phone));
       }
       if (password !== undefined && String(password).trim()) {
-        if (String(password).length < 6) return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı' });
+        if (!req.body.currentPassword) {
+          return res.status(400).json({ error: 'Şifre değiştirmek için mevcut şifrenizi girmeniz gerekli' });
+        }
+        const { data: targetUser } = await db.from('users').select('password').eq('id', id).single();
+        if (!targetUser) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+        const currentMatch = await bcrypt.compare(String(req.body.currentPassword), targetUser.password);
+        if (!currentMatch) {
+          return res.status(403).json({ error: 'Mevcut şifre hatalı' });
+        }
+        if (String(password).length < 8) return res.status(400).json({ error: 'Şifre en az 8 karakter olmalı' });
+        if (!/[A-Z]/.test(String(password)) || !/[a-z]/.test(String(password)) || !/[0-9]/.test(String(password))) {
+          return res.status(400).json({ error: 'Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermelidir' });
+        }
         updateData.password = await bcrypt.hash(String(password), 14);
       }
       if (isActive !== undefined) updateData.is_active = !!isActive;
@@ -102,6 +124,11 @@ export default async function handler(req, res) {
       const action = isActive === false ? 'Kullanıcı pasifleştirildi' : 'Kullanıcı güncellendi';
       createLog(db, { action, adminEmail: adminData.email, targetType: 'user', targetId: id, details: { name: user.name, email: user.email }, req });
 
+      // Revoke all tokens if password was changed
+      if (updateData.password) {
+        await revokeAllUserTokens(id, 'user').catch(() => {});
+      }
+
       res.status(200).json({ success: true, user: mapUser(user) });
     } catch (error) {
       res.status(500).json({ error: 'Kullanıcı güncellenemedi' });
@@ -116,8 +143,11 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Geçersiz isim' });
       }
       if (!validateEmail(email)) return res.status(400).json({ error: 'Geçersiz e-posta' });
-      if (typeof password !== 'string' || password.length < 6) {
-        return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı' });
+      if (typeof password !== 'string' || password.length < 8) {
+        return res.status(400).json({ error: 'Şifre en az 8 karakter olmalı' });
+      }
+      if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+        return res.status(400).json({ error: 'Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermelidir' });
       }
       if (phone && !validatePhone(phone)) return res.status(400).json({ error: 'Geçersiz telefon' });
 

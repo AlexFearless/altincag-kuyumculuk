@@ -15,6 +15,10 @@ function generateCode() {
   return crypto.randomInt(100000, 999999).toString();
 }
 
+function escapeHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -36,16 +40,16 @@ export default async function handler(req, res) {
 
     const { data: user } = await db
       .from('users')
-      .select('*')
+      .select('id, name, email, email_verified')
       .eq('email', cleanEmail)
       .single();
 
     if (!user) {
-      return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+      return res.status(200).json({ success: true, message: 'Doğrulama kodu gönderildi' });
     }
 
     if (user.email_verified) {
-      return res.status(400).json({ error: 'E-posta zaten doğrulanmış' });
+      return res.status(200).json({ success: true, message: 'Doğrulama kodu gönderildi' });
     }
 
     const code = generateCode();
@@ -70,7 +74,7 @@ export default async function handler(req, res) {
             </div>
             <div style="background: white; border-radius: 8px; padding: 30px; text-align: center;">
               <h2 style="color: #3d3024; font-size: 20px; margin-bottom: 10px;">E-posta Doğrulama</h2>
-              <p style="color: #666; font-size: 14px; margin-bottom: 25px;">Merhaba ${user.name}, yeni doğrulama kodunuz:</p>
+              <p style="color: #666; font-size: 14px; margin-bottom: 25px;">Merhaba ${escapeHtml(user.name)}, yeni doğrulama kodunuz:</p>
               <div style="background: #f9f6f1; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
                 <span style="font-size: 36px; font-weight: bold; color: #8B6914; letter-spacing: 8px;">${code}</span>
               </div>

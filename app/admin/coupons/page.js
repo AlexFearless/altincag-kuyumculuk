@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch, adminLogout } from '@/lib/adminApi';
 
 export default function AdminCoupons() {
   const [coupons, setCoupons] = useState([]);
@@ -35,22 +36,13 @@ export default function AdminCoupons() {
     applicableCategories: [],
   });
 
-  const getToken = () => localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
     fetchCoupons();
-  }, [router]);
+  }, []);
 
   const fetchCoupons = async () => {
     try {
-      const res = await fetch('/api/admin/coupons', {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const res = await fetch('/api/admin/coupons', { credentials: 'include' });
       const data = await res.json();
       if (res.ok) {
         setCoupons(data.coupons || []);
@@ -83,12 +75,8 @@ export default function AdminCoupons() {
         ? { ...formData, id: editingCoupon._id }
         : formData;
 
-      const res = await fetch('/api/admin/coupons', {
+      const res = await adminFetch('/api/admin/coupons', {
         method: editingCoupon ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify(body),
       });
 
@@ -114,9 +102,8 @@ export default function AdminCoupons() {
   const handleDelete = async (id) => {
     if (!confirm('Bu kuponu silmek istediğinize emin misiniz?')) return;
     try {
-      const res = await fetch(`/api/admin/coupons?id=${id}`, {
+      const res = await adminFetch(`/api/admin/coupons?id=${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.ok) {
         fetchCoupons();
@@ -130,12 +117,8 @@ export default function AdminCoupons() {
 
   const handleToggleActive = async (coupon) => {
     try {
-      const res = await fetch('/api/admin/coupons', {
+      const res = await adminFetch('/api/admin/coupons', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify({ id: coupon._id, isActive: !coupon.isActive }),
       });
       if (res.ok) {
@@ -163,14 +146,7 @@ export default function AdminCoupons() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_refresh_token');
-    localStorage.removeItem('admin_info');
-    sessionStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_refresh_token');
-    sessionStorage.removeItem('admin_info');
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    router.push('/admin/login');
+    adminLogout();
   };
 
   return (

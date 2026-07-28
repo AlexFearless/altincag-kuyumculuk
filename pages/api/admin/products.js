@@ -1,9 +1,14 @@
 import { getDb } from '@/lib/supabase';
-import { withAuth } from '@/lib/auth';
+import { withAdminRole } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
-import { sanitize } from '@/lib/sanitize';
+import { sanitize, sanitizeForOrFilter } from '@/lib/sanitize';
+import { rateLimit } from '@/lib/rateLimit';
+
+const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function handler(req, res) {
+  if (!(await adminLimiter(req, res))) return;
+
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
 
@@ -26,7 +31,10 @@ async function handleGet(db, req, res) {
     let query = db.from('products').select('*', { count: 'exact' });
 
     if (category) query = query.eq('category', category);
-    if (search) query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    if (search) {
+      const escapedSearch = sanitizeForOrFilter(search);
+      query = query.or(`name.ilike.%${escapedSearch}%,description.ilike.%${escapedSearch}%`);
+    }
 
     const { data: products, count } = await query
       .order('created_at', { ascending: false })
@@ -69,6 +77,10 @@ async function handlePost(db, req, res) {
     if (!name || !price || !category) {
       return res.status(400).json({ error: 'Ürün adı, fiyat ve kategori zorunludur' });
     }
+    const VALID_CATEGORIES = ['yuzuk', 'kolye', 'bileklik', 'kelepce', 'kupe', 'zincir', 'set'];
+    if (!VALID_CATEGORIES.includes(category)) {
+      return res.status(400).json({ error: 'Geçersiz kategori' });
+    }
     if (typeof name !== 'string' || name.length > 200) {
       return res.status(400).json({ error: 'Geçersiz ürün adı' });
     }
@@ -76,9 +88,14 @@ async function handlePost(db, req, res) {
       return res.status(400).json({ error: 'Geçersiz fiyat' });
     }
 
-    const filteredImages = Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.length < 500000).slice(0, 10) : [];
+    const filteredImages = Array.isArray(images) ? images.filter(img => {
+      if (typeof img !== 'string' || img.length >= 5000000) return false;
+      if (/^(javascript|vbscript):/i.test(img.trim())) return false;
+      if (/^data:/i.test(img.trim()) && !/^data:image\//i.test(img.trim())) return false;
+      return true;
+    }).slice(0, 10) : [];
 
-    const finalDiscountType = ['real', 'fake', ''].includes(discountType) ? discountType : '';
+    const finalDiscountType = ['real', ''].includes(discountType) ? discountType : '';
     const finalDiscountPercent = Math.min(100, Math.max(0, Number(discountPercent) || 0));
     const finalPrice = Number(price);
 
@@ -152,15 +169,24 @@ async function handlePut(db, req, res) {
     if (description !== undefined) updateData.description = sanitize(String(description));
     if (price !== undefined) { if (isNaN(Number(price)) || Number(price) < 0) return res.status(400).json({ error: 'Geçersiz fiyat' }); updateData.price = Number(price); }
     if (costPrice !== undefined) updateData.cost_price = Number(costPrice) || 0;
-    if (category !== undefined) updateData.category = category;
-    if (images !== undefined) updateData.images = Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.length < 500000).slice(0, 10) : [];
+    if (category !== undefined) {
+      const VALID_CATEGORIES = ['yuzuk', 'kolye', 'bileklik', 'kelepce', 'kupe', 'zincir', 'set'];
+      if (!VALID_CATEGORIES.includes(category)) return res.status(400).json({ error: 'Geçersiz kategori' });
+      updateData.category = category;
+    }
+    if (images !== undefined) updateData.images = Array.isArray(images) ? images.filter(img => {
+      if (typeof img !== 'string' || img.length >= 5000000) return false;
+      if (/^(javascript|vbscript):/i.test(img.trim())) return false;
+      if (/^data:/i.test(img.trim()) && !/^data:image\//i.test(img.trim())) return false;
+      return true;
+    }).slice(0, 10) : [];
     if (stock !== undefined) updateData.stock = Math.max(0, Number(stock) || 0);
     if (karat !== undefined) updateData.karat = karat;
     if (weight !== undefined) updateData.weight = Number(weight) || 0;
     if (material !== undefined) updateData.material = sanitize(String(material));
     if (isFeatured !== undefined) updateData.is_featured = !!isFeatured;
     if (discountPercent !== undefined) updateData.discount_percent = Math.min(100, Math.max(0, Number(discountPercent) || 0));
-    if (discountType !== undefined) updateData.discount_type = ['real', 'fake', ''].includes(discountType) ? discountType : '';
+    if (discountType !== undefined) updateData.discount_type = ['real', ''].includes(discountType) ? discountType : '';
 
     if ('discount_type' in updateData || 'discount_percent' in updateData || 'price' in updateData) {
       const { data: current } = await db.from('products').select('price, discount_percent, discount_type').eq('id', id).single();
@@ -210,4 +236,4 @@ async function handleDelete(db, req, res) {
   }
 }
 
-export default withAuth(handler);
+export default withAdminRole()(handler);

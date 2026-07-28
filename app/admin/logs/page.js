@@ -12,18 +12,12 @@ export default function AdminLogs() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-    if (!token) { router.push('/admin/login'); return; }
-    fetchLogs(token);
+    fetchLogs();
   }, [router, page]);
 
-  const getToken = () => localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-
-  const fetchLogs = async (token) => {
+  const fetchLogs = async () => {
     try {
-      const res = await fetch(`/api/admin/logs?page=${page}&limit=30`, {
-        headers: { Authorization: `Bearer ${token || getToken()}` },
-      });
+      const res = await fetch(`/api/admin/logs?page=${page}&limit=30`, { credentials: 'include' });
       const data = await res.json();
       setLogs(data.logs || []);
       setTotal(data.total || 0);

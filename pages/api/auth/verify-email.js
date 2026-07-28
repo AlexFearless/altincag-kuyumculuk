@@ -33,11 +33,11 @@ export default async function handler(req, res) {
       .single();
 
     if (!user) {
-      return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+      return res.status(400).json({ error: 'Geçersiz e-posta veya doğrulama kodu' });
     }
 
     if (user.email_verified) {
-      return res.status(400).json({ error: 'E-posta zaten doğrulanmış' });
+      return res.status(400).json({ error: 'Geçersiz e-posta veya doğrulama kodu' });
     }
 
     if (!user.verification_code || !user.verification_expires) {
@@ -48,7 +48,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Doğrulama kodunun süresi dolmuş. Yeni bir kod isteyin.' });
     }
 
-    if (user.verification_code !== code.trim()) {
+    const storedCode = Buffer.from(user.verification_code);
+    const providedCode = Buffer.from(code.trim());
+
+    if (storedCode.length !== providedCode.length || !crypto.timingSafeEqual(storedCode, providedCode)) {
       return res.status(400).json({ error: 'Geçersiz doğrulama kodu' });
     }
 
@@ -64,13 +67,13 @@ export default async function handler(req, res) {
 
     const { accessToken, refreshToken, expiresIn } = await generateTokenPair(user.id, 'user');
 
-    setTokenCookies(res, accessToken, refreshToken);
+    setTokenCookies(res, accessToken, refreshToken, {
+      id: user.id, name: user.name, email: user.email, phone: user.phone,
+    });
 
     res.status(200).json({
       success: true,
       message: 'E-posta başarıyla doğrulandı',
-      token: accessToken,
-      refreshToken,
       expiresIn,
       user: { id: user.id, name: user.name, email: user.email, phone: user.phone },
     });

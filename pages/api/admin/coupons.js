@@ -1,8 +1,14 @@
 import { getDb } from '@/lib/supabase';
-import { withAuth } from '@/lib/auth';
+import { withAdminRole } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
+import { rateLimit } from '@/lib/rateLimit';
+import { sanitize } from '@/lib/sanitize';
+
+const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function handler(req, res) {
+  if (!(await adminLimiter(req, res))) return;
+
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
 
@@ -41,7 +47,7 @@ async function handleGet(db, req, res) {
     const to = from + safeLimit - 1;
 
     let query = db.from('coupons').select('*', { count: 'exact' });
-    if (search) query = query.ilike('code', `%${search}%`);
+    if (search) query = query.ilike('code', `%${String(search).replace(/[%_]/g, '\\$&')}%`);
 
     const { data: coupons, count } = await query
       .order('created_at', { ascending: false })
@@ -67,6 +73,9 @@ async function handlePost(db, req, res) {
     if (isNaN(Number(discountValue)) || Number(discountValue) < 0) {
       return res.status(400).json({ error: 'Geçersiz indirim değeri' });
     }
+    if (discountType === 'percent' && Number(discountValue) > 100) {
+      return res.status(400).json({ error: 'Yüzde indirim en fazla %100 olabilir' });
+    }
 
     const { data: existing } = await db.from('coupons').select('id').ilike('code', code.trim()).single();
     if (existing) return res.status(400).json({ error: 'Bu kupon kodu zaten mevcut' });
@@ -75,7 +84,7 @@ async function handlePost(db, req, res) {
       .from('coupons')
       .insert({
         code: code.trim().toUpperCase(),
-        description: description || '',
+        description: sanitize(String(description || '').substring(0, 500)),
         discount_type: discountType,
         discount_value: Number(discountValue),
         min_order_amount: Number(minOrderAmount) || 0,
@@ -103,14 +112,23 @@ async function handlePut(db, req, res) {
     if (!id) return res.status(400).json({ error: 'Kupon ID zorunludur' });
 
     const updateData = {};
-    if (code !== undefined) updateData.code = String(code).trim().toUpperCase();
-    if (description !== undefined) updateData.description = String(description);
+    if (code !== undefined) {
+      const cleanCode = String(code).trim().toUpperCase();
+      if (cleanCode.length < 2 || cleanCode.length > 50) return res.status(400).json({ error: 'Kupon kodu 2-50 karakter olmalı' });
+      if (!/^[A-Z0-9]+$/.test(cleanCode)) return res.status(400).json({ error: 'Kupon kodu sadece harf ve rakam içerebilir' });
+      updateData.code = cleanCode;
+    }
+    if (description !== undefined) updateData.description = sanitize(String(description).substring(0, 500));
     if (discountType !== undefined) {
       if (!['percent', 'fixed'].includes(discountType)) return res.status(400).json({ error: 'İndirim tipi percent veya fixed olmalıdır' });
       updateData.discount_type = discountType;
     }
     if (discountValue !== undefined) {
       if (isNaN(Number(discountValue)) || Number(discountValue) < 0) return res.status(400).json({ error: 'Geçersiz indirim değeri' });
+      const effectiveType = discountType || updateData.discount_type;
+      if (effectiveType === 'percent' && Number(discountValue) > 100) {
+        return res.status(400).json({ error: 'Yüzde indirim en fazla %100 olabilir' });
+      }
       updateData.discount_value = Number(discountValue);
     }
     if (minOrderAmount !== undefined) updateData.min_order_amount = Number(minOrderAmount) || 0;
@@ -156,4 +174,4 @@ async function handleDelete(db, req, res) {
   }
 }
 
-export default withAuth(handler);
+export default withAdminRole()(handler);

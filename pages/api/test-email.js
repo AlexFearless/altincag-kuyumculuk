@@ -1,6 +1,7 @@
 import sgMail from '@sendgrid/mail';
 import { getSendgridApiKey, getSendgridFromEmail } from '@/lib/secrets';
 import { rateLimit } from '@/lib/rateLimit';
+import { withAuth } from '@/lib/auth';
 
 const SENDGRID_API_KEY = getSendgridApiKey();
 const FROM_EMAIL = getSendgridFromEmail();
@@ -9,12 +10,8 @@ if (SENDGRID_API_KEY) sgMail.setApiKey(SENDGRID_API_KEY);
 
 const testLimiter = rateLimit({ windowMs: 300000, max: 3, message: 'Çok fazla test. 5 dakika bekleyin.' });
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  if (!testLimiter(req, res)) return;
+async function handler(req, res) {
+  if (!(await testLimiter(req, res))) return;
 
   if (!SENDGRID_API_KEY) {
     return res.status(500).json({ error: 'SendGrid API key not configured' });
@@ -35,7 +32,9 @@ export default async function handler(req, res) {
 
     res.status(200).json({ success: true, statusCode: result[0].statusCode });
   } catch (error) {
-    console.error('SendGrid test error:', error.message);
-    res.status(500).json({ error: error.message });
+    console.error('SendGrid test error');
+    res.status(500).json({ error: 'E-posta gönderilemedi' });
   }
 }
+
+export default withAuth(handler);

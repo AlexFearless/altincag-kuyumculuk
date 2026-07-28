@@ -1,13 +1,14 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { csrfFetch } from '@/lib/csrf';
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
   const [guestId, setGuestId] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let id = localStorage.getItem('altincag_guest_id');
@@ -25,14 +26,15 @@ export function CartProvider({ children }) {
   }, [guestId]);
 
   const fetchCart = async () => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/cart', {
+      const res = await csrfFetch('/api/cart', {
         headers: { 'x-guest-id': guestId },
       });
       const data = await res.json();
       setItems(data.items || []);
     } catch (error) {
-      console.error('Sepet yüklenemedi:', error);
+      console.error('Sepet yüklenemedi');
     } finally {
       setLoading(false);
     }
@@ -40,7 +42,7 @@ export function CartProvider({ children }) {
 
   const addToCart = useCallback(async (productId, quantity = 1) => {
     try {
-      const res = await fetch('/api/cart', {
+      const res = await csrfFetch('/api/cart', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -52,14 +54,14 @@ export function CartProvider({ children }) {
       setItems(data.items || []);
       return true;
     } catch (error) {
-      console.error('Sepete eklenemedi:', error);
+      console.error('Sepete eklenemedi');
       return false;
     }
   }, [guestId]);
 
   const updateQuantity = useCallback(async (productId, quantity) => {
     try {
-      const res = await fetch('/api/cart', {
+      const res = await csrfFetch('/api/cart', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -70,13 +72,13 @@ export function CartProvider({ children }) {
       const data = await res.json();
       setItems(data.items || []);
     } catch (error) {
-      console.error('Miktar güncellenemedi:', error);
+      console.error('Miktar güncellenemedi');
     }
   }, [guestId]);
 
   const removeFromCart = useCallback(async (productId) => {
     try {
-      const res = await fetch('/api/cart', {
+      const res = await csrfFetch('/api/cart', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -87,13 +89,13 @@ export function CartProvider({ children }) {
       const data = await res.json();
       setItems(data.items || []);
     } catch (error) {
-      console.error('Ürün silinemedi:', error);
+      console.error('Ürün silinemedi');
     }
   }, [guestId]);
 
   const clearCart = useCallback(async () => {
     try {
-      await fetch('/api/cart', {
+      await csrfFetch('/api/cart', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +104,7 @@ export function CartProvider({ children }) {
       });
       setItems([]);
     } catch (error) {
-      console.error('Sepet temizlenemedi:', error);
+      console.error('Sepet temizlenemedi');
     }
   }, [guestId]);
 

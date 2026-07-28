@@ -1,12 +1,28 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { csrfFetch } from '@/lib/csrf';
 
 const AuthContext = createContext();
 
+function readUserCookie() {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/user_info=([^;]+)/);
+  if (!match) return null;
+  try {
+    return JSON.parse(decodeURIComponent(match[1]));
+  } catch {
+    return null;
+  }
+}
+
+function clearUserCookie() {
+  if (typeof document === 'undefined') return;
+  document.cookie = 'user_info=; Path=/; Max-Age=0; SameSite=Lax';
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState('');
   const [loading, setLoading] = useState(true);
   const refreshTimerRef = useRef(null);
 
@@ -16,20 +32,11 @@ export function AuthProvider({ children }) {
     if (refreshAt > 0) {
       refreshTimerRef.current = setTimeout(async () => {
         try {
-          const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
-          if (!refreshToken) return;
-          const res = await fetch('/api/auth/refresh', {
+          const res = await csrfFetch('/api/auth/refresh', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken }),
           });
-          const data = await res.json();
-          if (res.ok && data.token) {
-            const storage = localStorage.getItem('user_token') ? localStorage : sessionStorage;
-            storage.setItem('user_token', data.token);
-            setToken(data.token);
-            scheduleRefresh(data.expiresIn);
-          } else {
+          if (!res.ok) {
             logout();
           }
         } catch {
@@ -40,11 +47,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
-    const savedUser = localStorage.getItem('user_info') || sessionStorage.getItem('user_info');
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+    // Read user info from cookie (set by server during login)
+    const savedUser = readUserCookie();
+    if (savedUser) {
+      setUser(savedUser);
       scheduleRefresh(900);
     }
     setLoading(false);
@@ -52,7 +58,7 @@ export function AuthProvider({ children }) {
   }, [scheduleRefresh]);
 
   const login = useCallback(async (email, password, rememberMe = false) => {
-    const res = await fetch('/api/auth/login', {
+    const res = await csrfFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -60,36 +66,23 @@ export function AuthProvider({ children }) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 
-    localStorage.removeItem('user_token');
-    localStorage.removeItem('user_info');
-    localStorage.removeItem('refresh_token');
-    sessionStorage.removeItem('user_token');
-    sessionStorage.removeItem('user_info');
-    sessionStorage.removeItem('refresh_token');
-
-    const storage = rememberMe ? localStorage : sessionStorage;
-    storage.setItem('user_token', data.token);
-    storage.setItem('user_info', JSON.stringify(data.user));
-    if (data.refreshToken) storage.setItem('refresh_token', data.refreshToken);
-
-    setToken(data.token);
+    // Server sets user_info cookie via Set-Cookie header
+    // Read it after a tick to ensure cookie is available
     setUser(data.user);
     scheduleRefresh(data.expiresIn || 900);
     return data;
   }, [scheduleRefresh]);
 
   const register = useCallback(async (name, email, password, phone) => {
-    const res = await fetch('/api/auth/register', {
+    const res = await csrfFetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password, phone }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    localStorage.setItem('user_token', data.token);
-    localStorage.setItem('user_info', JSON.stringify(data.user));
-    if (data.refreshToken) localStorage.setItem('refresh_token', data.refreshToken);
-    setToken(data.token);
+
+    // Server sets user_info cookie
     setUser(data.user);
     if (data.expiresIn) scheduleRefresh(data.expiresIn);
     return data;
@@ -97,40 +90,35 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    localStorage.removeItem('user_token');
-    localStorage.removeItem('user_info');
-    localStorage.removeItem('refresh_token');
-    sessionStorage.removeItem('user_token');
-    sessionStorage.removeItem('user_info');
-    sessionStorage.removeItem('refresh_token');
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    setToken('');
+    clearUserCookie();
+    csrfFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     setUser(null);
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!user) return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('/api/user/profile', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await csrfFetch('/api/user/profile');
         const data = await res.json();
         if (data.error === 'Hesabınız devre dışı' || data.error === 'Geçersiz oturum') {
           logout();
           window.location.href = '/giris?reason=deactivated';
         } else if (data.user) {
           setUser(data.user);
-          const storage = localStorage.getItem('user_token') ? localStorage : sessionStorage;
-          storage.setItem('user_info', JSON.stringify(data.user));
+          // Update cookie with fresh data
+          if (typeof document !== 'undefined') {
+            const encoded = encodeURIComponent(JSON.stringify(data.user));
+            document.cookie = `user_info=${encoded}; Path=/; Max-Age=86400; SameSite=Lax`;
+          }
         }
       } catch {}
     }, 60000);
     return () => clearInterval(interval);
-  }, [token, logout]);
+  }, [user, logout]);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

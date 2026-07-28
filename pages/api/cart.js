@@ -5,13 +5,36 @@ import crypto from 'crypto';
 
 const cartLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla sepet işlemi. 1 dakika bekleyin.' });
 
-function getClientIp(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  return forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
-}
-
 function generateGuestId() {
   return 'guest_' + crypto.randomBytes(16).toString('hex');
+}
+
+function parseCookie(req) {
+  const cookieHeader = req.headers.cookie || '';
+  const cookies = {};
+  cookieHeader.split(';').forEach(c => {
+    const [key, ...val] = c.split('=');
+    if (key) cookies[key.trim()] = decodeURIComponent(val.join('='));
+  });
+  return cookies;
+}
+
+function getGuestIdFromRequest(req) {
+  const cookies = parseCookie(req);
+  if (cookies.guest_id && typeof cookies.guest_id === 'string' && cookies.guest_id.startsWith('guest_') && cookies.guest_id.length <= 100) {
+    return cookies.guest_id;
+  }
+  return null;
+}
+
+function setGuestIdCookie(res, guestId) {
+  const existing = res.getHeader('Set-Cookie') || [];
+  const cookieStr = `guest_id=${guestId}; Path=/; Max-Age=${90 * 24 * 60 * 60}; SameSite=Lax; HttpOnly`;
+  if (Array.isArray(existing)) {
+    res.setHeader('Set-Cookie', [...existing, cookieStr]);
+  } else {
+    res.setHeader('Set-Cookie', cookieStr);
+  }
 }
 
 async function getCartWithProducts(db, guestId) {
@@ -61,19 +84,22 @@ export default async function handler(req, res) {
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }
 
-  if (req.method !== 'GET' && !cartLimiter(req, res)) return;
+  // Rate limit all methods including GET to prevent DoS
+  if (!(await cartLimiter(req, res))) return;
 
   try {
-    let guestId = req.headers['x-guest-id'];
-    const ipAddress = getClientIp(req);
+    let guestId = getGuestIdFromRequest(req);
+    let isNewGuest = false;
 
-    if (!guestId || typeof guestId !== 'string' || guestId.length > 100) {
+    if (!guestId) {
       guestId = generateGuestId();
+      isNewGuest = true;
     }
 
     switch (req.method) {
       case 'GET': {
         const items = await getCartWithProducts(db, guestId);
+        if (isNewGuest) setGuestIdCookie(res, guestId);
         return res.status(200).json({ items, guestId });
       }
 
@@ -89,7 +115,7 @@ export default async function handler(req, res) {
         if (!cart) {
           const { data: newCart } = await db
             .from('carts')
-            .insert({ guest_id: guestId, ip_address: ipAddress })
+            .insert({ guest_id: guestId })
             .select('id')
             .single();
           cart = newCart;
@@ -120,6 +146,7 @@ export default async function handler(req, res) {
         }
 
         const items = await getCartWithProducts(db, guestId);
+        if (isNewGuest) setGuestIdCookie(res, guestId);
         return res.status(200).json({ items, guestId });
       }
 
@@ -168,7 +195,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Cart API error:', error);
+    console.error('Cart API error');
     res.status(500).json({ error: 'Sepet işlemi sırasında hata oluştu' });
   }
 }

@@ -1,50 +1,52 @@
 import { getDb } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '@/lib/secrets';
-import { rateLimit } from '@/lib/rateLimit';
+import { parseCookies } from '@/lib/cookieUtils';
 
 const JWT_SECRET = getJwtSecret();
-const ordersLimiter = rateLimit({ windowMs: 60000, max: 20, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (!ordersLimiter(req, res)) return;
+  let db;
+  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'DB error' }); }
+
+  const token = (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null) || parseCookies(req).access_token;
+  if (!token) return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
 
   try {
-    let db;
-    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { data: user } = await db.from('users').select('id, email, name, is_active').eq('id', decoded.id).single();
+    if (!user) return res.status(401).json({ error: 'Kullanıcı bulunamadı' });
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
-    }
+    const email = user.email;
 
-    let email;
-    try {
-      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-      const { data: user } = await db
-        .from('users')
-        .select('email, is_active')
-        .eq('id', decoded.id)
-        .single();
-      if (!user || !user.is_active) {
-        return res.status(401).json({ error: 'Hesap bulunamadı veya pasif' });
-      }
-      email = user.email;
-    } catch {
-      return res.status(401).json({ error: 'Geçersiz oturum' });
-    }
-
-    const { data: orders } = await db
+    const { data: emailOrders, error: emailErr } = await db
       .from('orders')
-      .select('*, order_items(*, products(name, images))')
+      .select('*')
       .eq('customer_email', email)
       .order('created_at', { ascending: false });
 
-    const mapped = (orders || []).map(o => ({
+    let orders = emailOrders || [];
+
+    if (orders.length === 0) {
+      const { data: userIdOrders } = await db
+        .from('orders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      orders = userIdOrders || [];
+    }
+
+    for (const o of orders) {
+      const { data: items } = await db
+        .from('order_items')
+        .select('*, products(name, images)')
+        .eq('order_id', o.id);
+      o.order_items = items || [];
+    }
+
+    const mapped = orders.map(o => ({
       _id: o.id,
       id: o.id,
       orderNumber: o.order_number,
@@ -78,7 +80,7 @@ export default async function handler(req, res) {
       updatedAt: o.updated_at,
     }));
 
-    res.status(200).json({ orders: mapped });
+    res.status(200).json({ orders: mapped, debug: { email, userId: user.id, orderCount: orders.length } });
   } catch (error) {
     console.error('User orders error:', error);
     res.status(500).json({ error: 'Siparişler yüklenemedi' });

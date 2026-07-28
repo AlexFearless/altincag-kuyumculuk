@@ -20,24 +20,13 @@ export default function RegisterPage() {
       setError('Şifreler eşleşmiyor');
       return;
     }
-    if (formData.password.length < 6) {
-      setError('Şifre en az 6 karakter olmalıdır');
+    if (formData.password.length < 8) {
+      setError('Şifre en az 8 karakter olmalıdır');
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          phone: formData.phone,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await register(formData.name, formData.email, formData.password, formData.phone);
       let url = `/dogrulama?email=${encodeURIComponent(data.email)}`;
       if (!data.emailSent) {
         url += '&emailFailed=1';
@@ -152,7 +141,7 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-earth-400 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-all"
                   required
-                  minLength={6}
+                  minLength={8}
                 />
               </div>
             </div>

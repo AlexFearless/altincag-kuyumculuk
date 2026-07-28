@@ -39,11 +39,10 @@ export default function Navbar() {
       const stored = JSON.parse(localStorage.getItem('wishlist') || '[]');
       setWishlistCount(stored.length);
     };
+    handleStorage();
     window.addEventListener('storage', handleStorage);
-    const interval = setInterval(handleStorage, 1000);
     return () => {
       window.removeEventListener('storage', handleStorage);
-      clearInterval(interval);
     };
   }, []);
 

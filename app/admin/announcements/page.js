@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch, adminLogout } from '@/lib/adminApi';
 
 export default function AdminAnnouncements() {
   const [announcements, setAnnouncements] = useState([]);
@@ -14,15 +15,13 @@ export default function AdminAnnouncements() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (!token) { router.push('/admin/login'); return; }
     fetchAnnouncements();
-  }, [router]);
+  }, []);
 
   async function fetchAnnouncements() {
     try {
-      const res = await fetch('/api/admin/announcements', { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } });
-      if (res.status === 401 || res.status === 403) { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_refresh_token'); fetch('/api/auth/logout', { method: 'POST' }).catch(() => {}); router.push('/admin/login'); return; }
+      const res = await fetch('/api/admin/announcements', { credentials: 'include' });
+      if (res.status === 401 || res.status === 403) { fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {}); router.push('/admin/login'); return; }
       const data = await res.json();
       setAnnouncements(data.announcements || []);
     } catch { } finally { setLoading(false); }
@@ -47,7 +46,7 @@ export default function AdminAnnouncements() {
       const url = '/api/admin/announcements';
       const method = editing ? 'PUT' : 'POST';
       const body = editing ? { id: editing._id || editing.id, ...form } : form;
-      await fetch(url, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('admin_token')}` }, body: JSON.stringify(body) });
+      await adminFetch(url, { method, body: JSON.stringify(body) });
       setShowModal(false);
       fetchAnnouncements();
     } finally { setSaving(false); }
@@ -55,13 +54,13 @@ export default function AdminAnnouncements() {
 
   async function handleDelete(id) {
     if (!confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
-    await fetch(`/api/admin/announcements?id=${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } });
+    await adminFetch(`/api/admin/announcements?id=${id}`, { method: 'DELETE' });
     fetchAnnouncements();
   }
 
   async function toggleActive(a) {
-    await fetch('/api/admin/announcements', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
+    await adminFetch('/api/admin/announcements', {
+      method: 'PUT',
       body: JSON.stringify({ id: a._id || a.id, isActive: !a.isActive }),
     });
     fetchAnnouncements();
@@ -82,7 +81,7 @@ export default function AdminAnnouncements() {
           </div>
           <div className="flex gap-3">
             <button onClick={openNew} className="bg-gold-500 text-white px-4 py-2 rounded-lg hover:bg-gold-600">+ Yeni Duyuru</button>
-            <button onClick={() => { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_refresh_token'); fetch('/api/auth/logout', { method: 'POST' }).catch(() => {}); router.push('/admin/login'); }} className="text-red-500 hover:text-red-700">Çıkış Yap</button>
+            <button onClick={adminLogout} className="text-red-500 hover:text-red-700">Çıkış Yap</button>
           </div>
         </div>
 

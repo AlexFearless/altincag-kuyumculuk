@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch, adminLogout } from '@/lib/adminApi';
 
 export default function AdminCampaigns() {
   const [campaigns, setCampaigns] = useState([]);
@@ -37,16 +38,9 @@ export default function AdminCampaigns() {
     targetProducts: [],
   });
 
-  const getToken = () => localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
     fetchCampaigns();
-  }, [router]);
+  }, []);
 
   const getCampaignStatus = (campaign) => {
     const now = new Date();
@@ -69,9 +63,7 @@ export default function AdminCampaigns() {
 
   const fetchCampaigns = async () => {
     try {
-      const res = await fetch('/api/admin/campaigns', {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const res = await fetch('/api/admin/campaigns', { credentials: 'include' });
       const data = await res.json();
       if (res.ok) {
         setCampaigns(data.campaigns || []);
@@ -104,12 +96,8 @@ export default function AdminCampaigns() {
         ? { ...formData, id: editingCampaign._id }
         : formData;
 
-      const res = await fetch('/api/admin/campaigns', {
+      const res = await adminFetch('/api/admin/campaigns', {
         method: editingCampaign ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify(body),
       });
 
@@ -135,9 +123,8 @@ export default function AdminCampaigns() {
   const handleDelete = async (id) => {
     if (!confirm('Bu kampanyayı silmek istediğinize emin misiniz?')) return;
     try {
-      const res = await fetch(`/api/admin/campaigns?id=${id}`, {
+      const res = await adminFetch(`/api/admin/campaigns?id=${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.ok) {
         fetchCampaigns();
@@ -151,12 +138,8 @@ export default function AdminCampaigns() {
 
   const handleToggleActive = async (campaign) => {
     try {
-      const res = await fetch('/api/admin/campaigns', {
+      const res = await adminFetch('/api/admin/campaigns', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify({ id: campaign._id, isActive: !campaign.isActive }),
       });
       if (res.ok) {
@@ -184,14 +167,7 @@ export default function AdminCampaigns() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_refresh_token');
-    localStorage.removeItem('admin_info');
-    sessionStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_refresh_token');
-    sessionStorage.removeItem('admin_info');
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    router.push('/admin/login');
+    adminLogout();
   };
 
   return (

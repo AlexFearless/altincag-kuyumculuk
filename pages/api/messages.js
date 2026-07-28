@@ -12,8 +12,9 @@ async function verifyAdminToken(db, req) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   try {
     const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    const { data: admin } = await db.from('admins').select('id, name, is_active').eq('id', decoded.id).single();
+    const { data: admin } = await db.from('admins').select('id, name, role, is_active').eq('id', decoded.id).single();
     if (!admin || !admin.is_active) return null;
+    if (!admin.role || !['super_admin', 'admin'].includes(admin.role)) return null;
     return admin;
   } catch {
     return null;
@@ -43,7 +44,7 @@ export default async function handler(req, res) {
 
   switch (req.method) {
     case 'POST':
-      if (!msgLimiter(req, res)) return;
+      if (!(await msgLimiter(req, res))) return;
       return handlePost(db, req, res);
     case 'GET': {
       const admin = await verifyAdminToken(db, req);

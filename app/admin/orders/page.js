@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch } from '@/lib/adminApi';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -13,24 +14,16 @@ export default function AdminOrders() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
     fetchOrders();
   }, [router, filterStatus]);
-
-  const getToken = () => localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
 
   const fetchOrders = async () => {
     try {
       const url = filterStatus
         ? `/api/admin/orders?status=${filterStatus}`
         : '/api/admin/orders';
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const res = await fetch(url, { credentials: 'include' });
+      if (res.status === 401) { router.push('/admin/login'); return; }
       const data = await res.json();
       if (res.ok) {
         setOrders(data.orders || []);
@@ -44,12 +37,8 @@ export default function AdminOrders() {
 
   const updateOrderStatus = async (orderId, status) => {
     try {
-      const res = await fetch('/api/admin/orders', {
+      const res = await adminFetch('/api/admin/orders', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify({ id: orderId, orderStatus: status }),
       });
 
@@ -69,9 +58,8 @@ export default function AdminOrders() {
   const deleteOrder = async (orderId) => {
     if (!confirm('Bu siparişi silmek istediğinize emin misiniz? Stoklar iade edilecektir.')) return;
     try {
-      const res = await fetch(`/api/admin/orders?id=${orderId}`, {
+      const res = await adminFetch(`/api/admin/orders?id=${orderId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.ok) {
         fetchOrders();
@@ -385,7 +373,7 @@ export default function AdminOrders() {
                   <p><span className="text-earth-500">Sipariş No:</span> #{selectedOrder.orderNumber}</p>
                   <p><span className="text-earth-500">Tarih:</span> {new Date(selectedOrder.createdAt).toLocaleString('tr-TR')}</p>
                   <p><span className="text-earth-500">Ödeme:</span> {selectedOrder.paymentMethod === 'kapida' ? 'Kapıda Ödeme' : selectedOrder.paymentMethod === 'havale' ? 'Havale/EFT' : 'Kredi Kartı'}</p>
-                  <p><span className="text-earth-500">Ödeme Durumu:</span> {selectedOrder.paymentStatus === 'paid' ? '✓ Ödendi' : '⏳ Beklemede'}</p>
+                  <p><span className="text-earth-500">Ödeme Durumu:</span> {(selectedOrder.paymentStatus === 'paid' || selectedOrder.paymentStatus === 'odendi') ? '✓ Ödendi' : '⏳ Beklemede'}</p>
                   {selectedOrder.guestId && <p><span className="text-earth-500">Kullanıcı ID:</span> {selectedOrder.guestId}</p>}
                 </div>
               </div>
@@ -479,6 +467,47 @@ export default function AdminOrders() {
                       {label}
                     </button>
                   ))}
+                </div>
+                <div className="mt-4 pt-4 border-t border-earth-200">
+                  <h4 className="text-sm font-semibold text-earth-700 mb-2">Ödeme Durumu</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await adminFetch('/api/admin/orders', {
+                            method: 'PATCH',
+                            body: JSON.stringify({ id: selectedOrder._id, paymentStatus: 'odendi' }),
+                          });
+                          if (res.ok) { fetchOrders(); setSelectedOrder(null); }
+                        } catch (e) { console.error(e); }
+                      }}
+                      className={`px-4 py-2 rounded-sm text-sm font-medium transition-colors ${
+                        (selectedOrder.paymentStatus === 'odendi' || selectedOrder.paymentStatus === 'paid')
+                          ? 'bg-green-500 text-white'
+                          : 'bg-earth-100 text-earth-600 hover:bg-green-100 hover:text-green-700'
+                      }`}
+                    >
+                      ✓ Ödendi
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await adminFetch('/api/admin/orders', {
+                            method: 'PATCH',
+                            body: JSON.stringify({ id: selectedOrder._id, paymentStatus: 'havale_bekliyor' }),
+                          });
+                          if (res.ok) { fetchOrders(); setSelectedOrder(null); }
+                        } catch (e) { console.error(e); }
+                      }}
+                      className={`px-4 py-2 rounded-sm text-sm font-medium transition-colors ${
+                        selectedOrder.paymentStatus === 'havale_bekliyor'
+                          ? 'bg-yellow-500 text-white'
+                          : 'bg-earth-100 text-earth-600 hover:bg-yellow-100 hover:text-yellow-700'
+                      }`}
+                    >
+                      ⏳ Havale Bekleniyor
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-earth-200 flex gap-3">
                   {selectedOrder.customerInfo?.phone && (

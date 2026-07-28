@@ -1,0 +1,4 @@
+-- Add 2FA columns to admins table
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS totp_secret TEXT;
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS last_totp_verify TIMESTAMPTZ;

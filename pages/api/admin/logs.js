@@ -1,19 +1,23 @@
 import jwt from 'jsonwebtoken';
 import { getDb } from '@/lib/supabase';
 import { getJwtSecret } from '@/lib/secrets';
+import { rateLimit } from '@/lib/rateLimit';
+import { parseCookies, getTokenFromRequest } from '@/lib/cookieUtils';
+import { getClientIp } from '@/lib/getClientIp';
 
 const JWT_SECRET = getJwtSecret();
+const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function verifyAdminActive(db, token) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const { data: admin } = await db
       .from('admins')
-      .select('id, is_active')
+      .select('id, is_active, role')
       .eq('id', decoded.id)
       .single();
     if (!admin || !admin.is_active) return null;
-    return decoded;
+    return { decoded, role: admin.role };
   } catch {
     return null;
   }
@@ -21,7 +25,7 @@ async function verifyAdminActive(db, token) {
 
 export async function createLog(db, { action, adminEmail, targetType, targetId, details, req }) {
   try {
-    const ip = req?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || '';
+    const ip = getClientIp(req);
     await db.from('logs').insert({
       action,
       admin_email: adminEmail,
@@ -36,15 +40,21 @@ export async function createLog(db, { action, adminEmail, targetType, targetId, 
 }
 
 export default async function handler(req, res) {
+  if (!(await adminLimiter(req, res))) return;
+
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = getTokenFromRequest(req);
+  if (!token) {
     return res.status(401).json({ error: 'Yetki gerekli' });
   }
-  const decoded = await verifyAdminActive(db, authHeader.split(' ')[1]);
-  if (!decoded) return res.status(401).json({ error: 'Geçersiz veya pasif hesap' });
+  const adminResult = await verifyAdminActive(db, token);
+  if (!adminResult) return res.status(401).json({ error: 'Geçersiz veya pasif hesap' });
+
+  if (!adminResult.role || !['super_admin', 'admin'].includes(adminResult.role)) {
+    return res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
+  }
 
   if (req.method === 'GET') {
     try {

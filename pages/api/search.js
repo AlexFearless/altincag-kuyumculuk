@@ -1,5 +1,6 @@
 import { getDbPublic } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimit';
+import { sanitizeForOrFilter } from '@/lib/sanitize';
 
 const searchLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla arama. 1 dakika bekleyin.' });
 
@@ -8,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!searchLimiter(req, res)) return;
+  if (!(await searchLimiter(req, res))) return;
 
   try {
     let db;
@@ -25,11 +26,13 @@ export default async function handler(req, res) {
       return res.status(200).json({ products: [] });
     }
 
+    const safe = sanitizeForOrFilter(trimmed);
+
     const { data: products } = await db
       .from('products')
       .select('name, slug, price, discounted_price, images, category, discount_percent, discount_type')
       .eq('is_active', true)
-      .or(`name.ilike.%${trimmed}%,description.ilike.%${trimmed}%,category.ilike.%${trimmed}%,material.ilike.%${trimmed}%`)
+      .or(`name.ilike.%${safe}%,description.ilike.%${safe}%,category.ilike.%${safe}%,material.ilike.%${safe}%`)
       .limit(Math.min(parseInt(limit) || 10, 50));
 
     const mapped = (products || []).map(p => ({

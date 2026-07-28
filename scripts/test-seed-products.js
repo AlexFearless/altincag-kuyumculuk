@@ -1,6 +1,5 @@
+require('dotenv').config({ path: '../.env.local' });
 const http = require('http');
-
-const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImE5YTk1M2U5LTEyNWItNDBkNy05ZmJjLWI3MzU1NGM0OGFkMyIsImlhdCI6MTc4NDc2NTkyMCwiZXhwIjoxNzg3MzU3OTIwfQ.96QhRkcn5nLIfRy69TddEta5fCkDpQABU3ZmyU2SM70';
 
 const products = [
   { name: 'Altın Yüzük 14 Ayar', price: 4500, category: 'yuzuk', stock: 15, karat: '14', description: 'Zarif altın yüzük', material: 'Altın', weight: 3.2, isFeatured: true },
@@ -18,7 +17,7 @@ for (const p of products) {
   const data = JSON.stringify(p);
   const req = http.request({
     hostname: 'localhost', port: 3000, path: '/api/admin/products', method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Content-Length': Buffer.byteLength(data) },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.ADMIN_JWT || ''}`, 'Content-Length': Buffer.byteLength(data) },
   }, (res) => {
     let body = '';
     res.on('data', c => body += c);

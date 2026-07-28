@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch } from '@/lib/adminApi';
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
@@ -47,24 +48,16 @@ export default function AdminProducts() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
     fetchProducts();
   }, [router, filterCategory]);
-
-  const getToken = () => localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
 
   const fetchProducts = async () => {
     try {
       const url = filterCategory
         ? `/api/admin/products?category=${filterCategory}`
         : '/api/admin/products';
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const res = await fetch(url, { credentials: 'include' });
+      if (res.status === 401) { router.push('/admin/login'); return; }
       const data = await res.json();
       if (res.ok) {
         setProducts(data.products || []);
@@ -112,12 +105,8 @@ export default function AdminProducts() {
         ? { ...formData, id: editingProduct._id }
         : formData;
 
-      const res = await fetch(url, {
+      const res = await adminFetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify(body),
       });
 
@@ -136,9 +125,8 @@ export default function AdminProducts() {
     if (!confirm('Bu ürünü silmek istediğinize emin misiniz?')) return;
 
     try {
-      const res = await fetch(`/api/admin/products?id=${id}`, {
+      const res = await adminFetch(`/api/admin/products?id=${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${getToken()}` },
       });
 
       if (res.ok) {
@@ -171,12 +159,8 @@ export default function AdminProducts() {
 
   const handleApplyDiscount = async () => {
     try {
-      const res = await fetch('/api/admin/discount', {
+      const res = await adminFetch('/api/admin/discount', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify(discountData),
       });
 
@@ -193,12 +177,8 @@ export default function AdminProducts() {
   const handleBulkUpdate = async (field, value) => {
     if (selectedProducts.length === 0) return;
     try {
-      const res = await fetch('/api/admin/products', {
+      const res = await adminFetch('/api/admin/products', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify({
           bulkUpdate: true,
           productIds: selectedProducts,
@@ -230,12 +210,8 @@ export default function AdminProducts() {
     if (selectedProducts.length === 0 || !bulkDiscountPercent) return;
     setBulkDiscountApplying(true);
     try {
-      const res = await fetch('/api/admin/discount', {
+      const res = await adminFetch('/api/admin/discount', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify({
           productIds: selectedProducts,
           discountPercent: Number(bulkDiscountPercent),
@@ -465,10 +441,17 @@ export default function AdminProducts() {
                             src={product.images[0]}
                             alt={product.name}
                             className="w-10 h-10 rounded-sm object-cover mr-3"
+                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                           />
-                        ) : (
-                          <div className="w-10 h-10 bg-earth-100 rounded-sm mr-3" />
-                        )}
+                        ) : null}
+                        <div
+                          className="w-10 h-10 bg-earth-100 rounded-sm mr-3 items-center justify-center"
+                          style={{ display: product.images && product.images[0] ? 'none' : 'flex' }}
+                        >
+                          <svg className="w-5 h-5 text-earth-300" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                          </svg>
+                        </div>
                         <span className="text-sm font-medium text-earth-800 line-clamp-1">
                           {product.name}
                         </span>

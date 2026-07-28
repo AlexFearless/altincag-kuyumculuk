@@ -8,14 +8,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!couponLimiter(req, res)) return;
+  if (!(await couponLimiter(req, res))) return;
 
   let db;
   try { db = getDbPublic(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }
 
   try {
     const { code, orderAmount, cartCategories } = req.body;
-    if (!code) return res.status(400).json({ error: 'Kupon kodu gerekli' });
+    if (!code || typeof code !== 'string') return res.status(400).json({ error: 'Kupon kodu gerekli' });
 
     const { data: coupon } = await db
       .from('coupons')

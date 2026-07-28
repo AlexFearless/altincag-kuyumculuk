@@ -1,8 +1,13 @@
 import { getDb } from '@/lib/supabase';
-import { withAuth } from '@/lib/auth';
+import { withAdminRole } from '@/lib/auth';
 import { sanitize } from '@/lib/sanitize';
+import { rateLimit } from '@/lib/rateLimit';
+
+const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function handler(req, res) {
+  if (!(await adminLimiter(req, res))) return;
+
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }
 
@@ -31,10 +36,16 @@ async function handleGet(db, res) {
   }
 }
 
+function isValidColor(color) {
+  return typeof color === 'string' && /^#[0-9A-Fa-f]{6}$/.test(color);
+}
+
 async function handlePost(db, req, res) {
   try {
     const { title, message, bgColor = '#B8860B', textColor = '#FFFFFF', isActive = true } = req.body;
     if (!title?.trim() || !message?.trim()) return res.status(400).json({ error: 'Başlık ve mesaj gerekli' });
+    if (!isValidColor(bgColor)) return res.status(400).json({ error: 'Geçersiz arka plan rengi' });
+    if (!isValidColor(textColor)) return res.status(400).json({ error: 'Geçersiz metin rengi' });
 
     if (isActive) {
       await db.from('announcements').update({ is_active: false }).eq('is_active', true);
@@ -68,8 +79,14 @@ async function handlePut(db, req, res) {
     const updates = {};
     if (title !== undefined) updates.title = sanitize(title.trim());
     if (message !== undefined) updates.message = sanitize(message.trim());
-    if (bgColor !== undefined) updates.bg_color = bgColor;
-    if (textColor !== undefined) updates.text_color = textColor;
+    if (bgColor !== undefined) {
+      if (!isValidColor(bgColor)) return res.status(400).json({ error: 'Geçersiz arka plan rengi' });
+      updates.bg_color = bgColor;
+    }
+    if (textColor !== undefined) {
+      if (!isValidColor(textColor)) return res.status(400).json({ error: 'Geçersiz metin rengi' });
+      updates.text_color = textColor;
+    }
     if (isActive !== undefined) updates.is_active = isActive;
 
     const { error } = await db.from('announcements').update(updates).eq('id', id);
@@ -91,4 +108,4 @@ async function handleDelete(db, req, res) {
   }
 }
 
-export default withAuth(handler);
+export default withAdminRole()(handler);

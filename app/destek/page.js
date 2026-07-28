@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { csrfFetch } from '@/lib/csrf';
 
 
 const categories = [
@@ -74,10 +75,7 @@ export default function SupportPage() {
     if (!selectedThread || !user) return;
     const interval = setInterval(async () => {
       try {
-        const token = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
-        const res = await fetch('/api/user/messages', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+        const res = await fetch('/api/user/messages', { credentials: 'include' });
         const data = await res.json();
         const updated = data.messages?.find(m => m._id === selectedThread._id);
         if (updated) {
@@ -108,10 +106,7 @@ export default function SupportPage() {
 
   const fetchMessages = async () => {
     try {
-      const token = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
-      const res = await fetch('/api/user/messages', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const res = await fetch('/api/user/messages', { credentials: 'include' });
       const data = await res.json();
       setMessages(data.messages || []);
       // Seçili thread'i de güncelle
@@ -140,6 +135,7 @@ export default function SupportPage() {
           subject: formData.subject,
           message: formData.message,
         }),
+        credentials: 'include',
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -158,7 +154,7 @@ export default function SupportPage() {
     setReplying(true);
     setReplyError('');
     try {
-      const res = await fetch('/api/user/messages', {
+      const res = await csrfFetch('/api/user/messages', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -166,6 +162,7 @@ export default function SupportPage() {
           reply: replyText.trim(),
           senderName: user.name,
         }),
+        credentials: 'include',
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Yanıt gönderilemedi');

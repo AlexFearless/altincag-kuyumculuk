@@ -5,7 +5,7 @@ import { rateLimit } from '@/lib/rateLimit';
 import { validateEmail, validatePhone, sanitize } from '@/lib/sanitize';
 import sgMail from '@sendgrid/mail';
 import { getSendgridApiKey, getSendgridFromEmail } from '@/lib/secrets';
-import { generateToken } from '@/lib/auth';
+import { getClientIp } from '@/lib/getClientIp';
 
 const SENDGRID_API_KEY = getSendgridApiKey();
 const FROM_EMAIL = getSendgridFromEmail();
@@ -18,7 +18,12 @@ function generateCode() {
   return crypto.randomInt(100000, 999999).toString();
 }
 
+function escapeHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 async function sendVerificationEmail(email, name, code) {
+  const safeName = escapeHtml(name);
   await sgMail.send({
     from: FROM_EMAIL,
     to: email,
@@ -30,7 +35,7 @@ async function sendVerificationEmail(email, name, code) {
         </div>
         <div style="background: white; border-radius: 8px; padding: 30px; text-align: center;">
           <h2 style="color: #3d3024; font-size: 20px; margin-bottom: 10px;">E-posta Doğrulama</h2>
-          <p style="color: #666; font-size: 14px; margin-bottom: 25px;">Merhaba ${name}, hesabınızı doğrulamak için aşağıdaki kodu kullanın:</p>
+          <p style="color: #666; font-size: 14px; margin-bottom: 25px;">Merhaba ${safeName}, hesabınızı doğrulamak için aşağıdaki kodu kullanın:</p>
           <div style="background: #f9f6f1; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
             <span style="font-size: 36px; font-weight: bold; color: #8B6914; letter-spacing: 8px;">${code}</span>
           </div>
@@ -64,8 +69,11 @@ export default async function handler(req, res) {
     if (!validateEmail(String(email))) {
       return res.status(400).json({ error: 'Geçersiz e-posta adresi' });
     }
-    if (typeof password !== 'string' || password.length < 6 || password.length > 100) {
-      return res.status(400).json({ error: 'Şifre 6-100 karakter olmalıdır' });
+    if (typeof password !== 'string' || password.length < 8 || password.length > 100) {
+      return res.status(400).json({ error: 'Şifre 8-100 karakter olmalıdır' });
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermelidir' });
     }
     if (!validatePhone(String(phone))) {
       return res.status(400).json({ error: 'Geçersiz telefon numarası' });
@@ -83,7 +91,7 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: 'Bu e-posta adresi zaten kayıtlı' });
     }
 
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '';
+    const ip = getClientIp(req);
     const verificationCode = generateCode();
     const verificationExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const hashedPassword = await bcrypt.hash(password, 14);
@@ -118,14 +126,11 @@ export default async function handler(req, res) {
       console.error('Email send failed:', err.message);
     }
 
-    const token = generateToken(user.id);
-
     res.status(201).json({
       success: true,
       requiresVerification: true,
       email: cleanEmail,
       emailSent,
-      token,
       user: { id: user.id, name: user.name, email: user.email, phone: user.phone },
     });
   } catch (error) {

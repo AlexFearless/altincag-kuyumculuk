@@ -12,23 +12,28 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-    const adminInfo = localStorage.getItem('admin_info') || sessionStorage.getItem('admin_info');
+    fetchStats();
+    fetchAdminInfo();
+  }, []);
 
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
-
-    if (adminInfo) setAdmin(JSON.parse(adminInfo));
-    fetchStats(token);
-  }, [router]);
-
-  const fetchStats = async (token) => {
+  const fetchAdminInfo = async () => {
     try {
-      const res = await fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/admin/verify', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.admin) setAdmin(data.admin);
+      }
+    } catch {}
+  };
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('/api/admin/stats', { credentials: 'include' });
       if (!res.ok) {
-        if (res.status === 401) { localStorage.removeItem('admin_token'); sessionStorage.removeItem('admin_token'); router.push('/admin/login'); return; }
+        if (res.status === 401) { router.push('/admin/login'); return; }
         return;
       }
       const data = await res.json();
@@ -47,13 +52,7 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_info');
-    localStorage.removeItem('admin_refresh_token');
-    sessionStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_info');
-    sessionStorage.removeItem('admin_refresh_token');
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     router.push('/admin/login');
   };
 
@@ -223,6 +222,12 @@ export default function AdminDashboard() {
             <h3 className="font-serif text-xl font-semibold text-earth-800 mb-2">Aktivite Logları</h3>
             <p className="text-earth-500 text-sm">Admin işlemlerinin loglarını görüntüle.</p>
           </Link>
+
+          <Link href="/admin/settings" className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow group">
+            <ShieldIcon className="w-12 h-12 text-earth-300 group-hover:text-gold-500 transition-colors mb-4" />
+            <h3 className="font-serif text-xl font-semibold text-earth-800 mb-2">Güvenlik Ayarları</h3>
+            <p className="text-earth-500 text-sm">İki faktörlü doğrulama (2FA) ayarlarını yönet.</p>
+          </Link>
         </div>
       </div>
     </div>
@@ -313,6 +318,14 @@ function CalendarIcon({ className }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+    </svg>
+  );
+}
+
+function ShieldIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
     </svg>
   );
 }

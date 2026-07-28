@@ -21,22 +21,15 @@ export default function AdminReports() {
   const [profitData, setProfitData] = useState({ totalCost: 0, totalProfit: 0 });
   const router = useRouter();
 
-  const getToken = () => localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
-    fetchReportData(token);
-  }, [router]);
+    fetchReportData();
+  }, []);
 
-  const fetchReportData = async (token) => {
+  const fetchReportData = async () => {
     try {
       const [ordersRes, statsRes] = await Promise.all([
-        fetch('/api/admin/orders?limit=1000', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/orders?limit=1000', { credentials: 'include' }),
+        fetch('/api/admin/stats', { credentials: 'include' }),
       ]);
       const ordersData = await ordersRes.json();
       const statsData = await statsRes.json();
@@ -49,9 +42,9 @@ export default function AdminReports() {
       const todayOrders = allOrders.filter(o => new Date(o.createdAt) >= todayStart && o.orderStatus !== 'cancelled');
       const monthOrders = allOrders.filter(o => new Date(o.createdAt) >= monthStart && o.orderStatus !== 'cancelled');
 
-      const todayRevenue = todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-      const monthRevenue = monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-      const totalRevenue = allOrders.filter(o => o.orderStatus !== 'cancelled').reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+      const todayRevenue = todayOrders.filter(o => o.paymentStatus === 'paid' || o.paymentStatus === 'odendi').reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+      const monthRevenue = monthOrders.filter(o => o.paymentStatus === 'paid' || o.paymentStatus === 'odendi').reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+      const totalRevenue = allOrders.filter(o => o.paymentStatus === 'paid' || o.paymentStatus === 'odendi').reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
       const breakdown = {};
       allOrders.forEach(o => {
@@ -96,13 +89,7 @@ export default function AdminReports() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_refresh_token');
-    localStorage.removeItem('admin_info');
-    sessionStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_refresh_token');
-    sessionStorage.removeItem('admin_info');
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     router.push('/admin/login');
   };
 

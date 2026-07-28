@@ -20,29 +20,15 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.needsVerification) {
-          router.push(`/dogrulama?email=${encodeURIComponent(data.email)}`);
-          return;
-        }
-        throw new Error(data.error);
-      }
-      if (rememberMe) {
-        localStorage.setItem('user_token', data.token);
-        localStorage.setItem('user_info', JSON.stringify(data.user));
-      } else {
-        sessionStorage.setItem('user_token', data.token);
-        sessionStorage.setItem('user_info', JSON.stringify(data.user));
-      }
+      await login(email, password, rememberMe);
       router.push('/');
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || '';
+      if (msg.includes('doğrulanmamış') || msg.includes('do\u011frulanmam')) {
+        router.push(`/dogrulama?email=${encodeURIComponent(email)}`);
+        return;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }

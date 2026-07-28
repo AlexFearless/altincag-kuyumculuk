@@ -22,6 +22,7 @@ export default function ContactPage() {
       const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           name: user?.name || 'Ziyaretçi',
           email: user?.email || '',

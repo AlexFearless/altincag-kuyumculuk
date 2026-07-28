@@ -1,15 +1,22 @@
 import { getDb } from '@/lib/supabase';
-import { withAuth } from '@/lib/auth';
+import { withAdminRole } from '@/lib/auth';
 import { createLog } from '@/pages/api/admin/logs';
 import { sendOrderStatusEmail } from '@/lib/orderEmails';
+import { rateLimit } from '@/lib/rateLimit';
+import { sanitize } from '@/lib/sanitize';
+
+const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function handler(req, res) {
+  if (!(await adminLimiter(req, res))) return;
+
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
 
   switch (req.method) {
     case 'GET': return handleGet(db, req, res);
     case 'PUT': return handlePut(db, req, res);
+    case 'PATCH': return handlePatch(db, req, res);
     case 'DELETE': return handleDelete(db, req, res);
     default: return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -98,22 +105,45 @@ async function handlePut(db, req, res) {
 
     const oldStatus = order.order_status;
 
+    // Allow flexible status transitions (admin can move backward/forward)
+    const allowedTransitions = {
+      pending: ['processing', 'shipped', 'delivered', 'cancelled'],
+      processing: ['pending', 'shipped', 'delivered', 'cancelled'],
+      shipped: ['pending', 'processing', 'delivered', 'cancelled'],
+      delivered: ['shipped', 'processing', 'pending', 'refunded'],
+      cancelled: ['pending'],
+      refunded: [],
+    };
+    if (orderStatus && orderStatus !== oldStatus) {
+      const allowed = allowedTransitions[oldStatus] || [];
+      if (!allowed.includes(orderStatus)) {
+        return res.status(400).json({ error: `"${oldStatus}" durumundan "${orderStatus}" durumuna geçiş yapılamaz` });
+      }
+    }
+
     if (orderStatus === 'cancelled' && oldStatus !== 'cancelled') {
       const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
       for (const item of (items || [])) {
         if (item.product_id) {
-          const { data: product } = await db.from('products').select('stock').eq('id', item.product_id).single();
-          if (product) {
-            await db.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id);
-          }
+          await db.rpc('increment_stock', { p_product_id: item.product_id, p_quantity: item.quantity }).then(() => {}).catch(async () => {
+            const { data: product } = await db.from('products').select('stock').eq('id', item.product_id).single();
+            if (product) {
+              await db.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id).eq('stock', product.stock);
+            }
+          });
         }
       }
     }
 
     const updateData = {};
-    if (orderStatus) updateData.order_status = orderStatus;
-    if (trackingNumber !== undefined) updateData.tracking_number = trackingNumber;
-    if (notes !== undefined) updateData.notes = notes;
+    if (orderStatus) {
+      updateData.order_status = orderStatus;
+      if ((orderStatus === 'pending') && order.payment_status === 'odendi') {
+        updateData.payment_status = 'havale_bekliyor';
+      }
+    }
+    if (trackingNumber !== undefined) updateData.tracking_number = sanitize(String(trackingNumber).substring(0, 100));
+    if (notes !== undefined) updateData.notes = sanitize(String(notes).substring(0, 500));
 
     const { data: updated } = await db
       .from('orders')
@@ -146,6 +176,99 @@ async function handlePut(db, req, res) {
   }
 }
 
+async function handlePatch(db, req, res) {
+  try {
+    const { id, paymentStatus, reason: rawReason } = req.body;
+    const reason = rawReason ? sanitize(String(rawReason).substring(0, 500)) : '';
+    if (!id) return res.status(400).json({ error: 'Sipariş ID zorunludur' });
+
+    const { data: order } = await db.from('orders').select('*').eq('id', id).single();
+    if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı' });
+
+    const allowedPaymentStatuses = ['havale_bekliyor', 'odendi', 'iptal'];
+    if (!paymentStatus || !allowedPaymentStatuses.includes(paymentStatus)) {
+      return res.status(400).json({ error: 'Geçersiz ödeme durumu. İzin verilenler: havale_bekliyor, odendi, iptal' });
+    }
+
+    const oldPaymentStatus = order.payment_status;
+
+    if (paymentStatus === 'odendi' && oldPaymentStatus !== 'odendi') {
+      const updateData = { payment_status: 'odendi' };
+      if (order.order_status === 'pending' || order.order_status === 'havale_bekliyor') {
+        updateData.order_status = 'processing';
+      }
+      const { data: updated } = await db
+        .from('orders')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      createLog(db, { action: `Ödeme onaylandı: ${oldPaymentStatus} → odendi`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number }, req });
+
+      let whatsappUrl = null;
+      if (order.customer_phone) {
+        const msg = `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) ödemesi onaylandı. Siparişiniz hazırlanıyor.`;
+        const phone = order.customer_phone.replace(/[^0-9]/g, '');
+        whatsappUrl = `https://wa.me/90${phone.startsWith('0') ? phone.slice(1) : phone}?text=${encodeURIComponent(msg)}`;
+      }
+
+      sendOrderStatusEmail({ ...updated, customer_first_name: order.customer_first_name, customer_email: order.customer_email, order_number: order.order_number }, 'processing').catch(() => {});
+
+      return res.status(200).json({ success: true, order: mapOrder(updated), whatsappUrl });
+    }
+
+    if (paymentStatus === 'iptal' && oldPaymentStatus !== 'iptal') {
+      const { error: updateError } = await db
+        .from('orders')
+        .update({ payment_status: 'iptal', order_status: 'cancelled' })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      // Restore stock
+      const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
+      for (const item of (items || [])) {
+        if (item.product_id) {
+          await db.rpc('increment_stock', { p_product_id: item.product_id, p_quantity: item.quantity }).then(() => {}).catch(async () => {
+            const { data: product } = await db.from('products').select('stock').eq('id', item.product_id).single();
+            if (product) {
+              await db.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id).eq('stock', product.stock);
+            }
+          });
+        }
+      }
+
+      createLog(db, { action: `Ödeme iptal edildi: ${oldPaymentStatus} → iptal. Sebep: ${reason || 'Belirtilmedi'}`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, reason }, req });
+
+      let whatsappUrl = null;
+      if (order.customer_phone) {
+        const msg = `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) ödemesi iptal edildi.${reason ? ` Sebep: ${reason}` : ''}`;
+        const phone = order.customer_phone.replace(/[^0-9]/g, '');
+        whatsappUrl = `https://wa.me/90${phone.startsWith('0') ? phone.slice(1) : phone}?text=${encodeURIComponent(msg)}`;
+      }
+
+      return res.status(200).json({ success: true, whatsappUrl });
+    }
+
+    if (paymentStatus === 'havale_bekliyor' && oldPaymentStatus !== 'havale_bekliyor') {
+      const { data: updated } = await db
+        .from('orders')
+        .update({ payment_status: 'havale_bekliyor' })
+        .eq('id', id)
+        .select()
+        .single();
+      createLog(db, { action: `Ödeme durumu güncellendi: ${oldPaymentStatus} → havale_bekliyor`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number }, req });
+      return res.status(200).json({ success: true, order: mapOrder(updated) });
+    }
+
+    res.status(200).json({ success: true, order: mapOrder(order) });
+  } catch (error) {
+    console.error('Admin orders PATCH error:', error);
+    res.status(500).json({ error: 'Ödeme durumu güncellenirken hata oluştu' });
+  }
+}
+
 async function handleDelete(db, req, res) {
   try {
     const { id } = req.query;
@@ -158,10 +281,12 @@ async function handleDelete(db, req, res) {
       const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
       for (const item of (items || [])) {
         if (item.product_id) {
-          const { data: product } = await db.from('products').select('stock').eq('id', item.product_id).single();
-          if (product) {
-            await db.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id);
-          }
+          await db.rpc('increment_stock', { p_product_id: item.product_id, p_quantity: item.quantity }).then(() => {}).catch(async () => {
+            const { data: product } = await db.from('products').select('stock').eq('id', item.product_id).single();
+            if (product) {
+              await db.from('products').update({ stock: product.stock + item.quantity }).eq('id', item.product_id).eq('stock', product.stock);
+            }
+          });
         }
       }
     }
@@ -177,4 +302,4 @@ async function handleDelete(db, req, res) {
   }
 }
 
-export default withAuth(handler);
+export default withAdminRole()(handler);

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { csrfFetch } from '@/lib/csrf';
 
 
 export default function AccountPage() {
@@ -12,7 +13,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
-  const { user, token, logout } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
 
   const [profileForm, setProfileForm] = useState({
@@ -43,9 +44,7 @@ export default function AccountPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch('/api/user/orders', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch('/api/user/orders', { credentials: 'include' });
       const data = await res.json();
       setOrders(data.orders || []);
     } catch (error) {
@@ -59,12 +58,9 @@ export default function AccountPage() {
     setSaving(true);
     setSaveMsg('');
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await csrfFetch('/api/user/profile', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: profileForm.name,
           phone: profileForm.phone,
@@ -75,8 +71,8 @@ export default function AccountPage() {
       const data = await res.json();
       if (data.success) {
         const updatedUser = { ...user, ...data.user };
-        localStorage.setItem('user_info', JSON.stringify(updatedUser));
-        sessionStorage.setItem('user_info', JSON.stringify(updatedUser));
+        const encoded = encodeURIComponent(JSON.stringify(updatedUser));
+        document.cookie = `user_info=${encoded}; Path=/; Max-Age=86400; SameSite=Lax`;
         setSaveMsg('Profiliniz güncellendi');
       } else {
         setSaveMsg(data.error || 'Güncelleme başarısız');

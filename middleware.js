@@ -1,46 +1,236 @@
 import { NextResponse } from 'next/server';
+import { jwtVerify } from 'jose';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || '';
 
 const ALLOWED_ORIGINS = [
-  process.env.NEXT_PUBLIC_SITE_URL,
-  'http://localhost:3000',
-  'https://localhost:3000',
+  SITE_URL,
 ].filter(Boolean);
 
-export function middleware(request) {
+const STATE_CHANGING_METHODS = ['POST', 'PUT', 'DELETE', 'PATCH'];
+
+const isProd = process.env.NODE_ENV === 'production';
+const CSP_EVAL = isProd ? "" : " 'unsafe-eval'";
+const CSP_SCRIPT_INLINE = isProd ? "" : " 'unsafe-inline'";
+
+function generateNonce() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
+
+const SECURITY_HEADERS_BASE = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+};
+
+function buildCspHeaders(nonce) {
+  return {
+    ...SECURITY_HEADERS_BASE,
+    'Content-Security-Policy': [
+      "default-src 'self'",
+      `script-src 'self'${CSP_EVAL}${CSP_SCRIPT_INLINE} 'nonce-${nonce}' https://www.google.com https://www.gstatic.com https://maps.googleapis.com`,
+      `style-src 'self' 'unsafe-inline' 'nonce-${nonce}' https://fonts.googleapis.com`,
+      "img-src 'self' data: https: blob:",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "connect-src 'self' https://*.supabase.co",
+      "frame-src https://www.google.com https://maps.google.com",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join('; '),
+  };
+}
+
+const CSRF_EXEMPT_PATHS = [
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/verify-email',
+  '/api/auth/send-verification',
+  '/api/admin/login',
+  '/api/admin/verify',
+  '/api/products',
+  '/api/search',
+  '/api/track',
+  '/api/announcements',
+  '/api/messages',
+];
+
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
+
+async function verifyAdminToken(request) {
+  const cookieHeader = request.headers.get('cookie') || '';
+  const match = cookieHeader.match(/access_token=([^;]+)/);
+  if (!match) return null;
+
+  try {
+    const { payload } = await jwtVerify(match[1], JWT_SECRET, { algorithms: ['HS256'] });
+    // Only allow admin tokens for admin routes
+    if (payload.userType !== 'admin') return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  cookieHeader.split(';').forEach(c => {
+    const [key, ...val] = c.split('=');
+    if (key) cookies[key.trim()] = val.join('=');
+  });
+  return cookies;
+}
+
+function generateCsrfToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function verifyCsrfToken(request) {
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookies = parseCookies(cookieHeader);
+  const cookieToken = cookies.csrf_token;
+  const headerToken = request.headers.get('x-csrf-token');
+
+  if (!cookieToken || !headerToken) return false;
+  if (cookieToken.length !== headerToken.length) return false;
+
+  // Constant-time comparison (Edge Runtime compatible)
+  let result = 0;
+  for (let i = 0; i < cookieToken.length; i++) {
+    result |= cookieToken.charCodeAt(i) ^ headerToken.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+function isCsrfExempt(pathname) {
+  return CSRF_EXEMPT_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
+}
+
+function ensureCsrfCookie(response) {
+  const existing = response.headers.get('set-cookie') || '';
+  if (existing.includes('csrf_token')) return response;
+
+  const token = generateCsrfToken();
+  const isProd = process.env.NODE_ENV === 'production';
+  const secureFlag = isProd ? '; Secure' : '';
+  const cookie = `csrf_token=${token}; Path=/; Max-Age=${24 * 60 * 60}; SameSite=Lax${secureFlag}`;
+
+  if (Array.isArray(response.headers.get('set-cookie'))) {
+    response.headers.append('Set-Cookie', cookie);
+  } else {
+    response.headers.set('Set-Cookie', cookie);
+  }
+  return response;
+}
+
+export async function middleware(request) {
+  const nonce = generateNonce();
+  const SECURITY_HEADERS = buildCspHeaders(nonce);
+
   const response = NextResponse.next();
+  const headers = response.headers;
 
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
-  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    headers.set(key, value);
+  }
 
-  if (request.nextUrl.pathname.startsWith('/api/')) {
+  headers.set('X-Nonce', nonce);
+
+  const pathname = request.nextUrl.pathname;
+
+  // Server-side admin route protection
+  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+    const payload = await verifyAdminToken(request);
+    if (!payload) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin/login';
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (pathname.startsWith('/api/')) {
+    // Admin API protection
+    if (pathname.startsWith('/api/admin/') && pathname !== '/api/admin/login' && pathname !== '/api/admin/verify') {
+      const payload = await verifyAdminToken(request);
+      if (!payload) {
+        return NextResponse.json({ error: 'Yetkilendirme başarısız' }, { status: 401 });
+      }
+      request.admin = payload;
+    }
+
+    // CORS
     const origin = request.headers.get('origin');
-    const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
 
-    response.headers.set('Access-Control-Allow-Origin', allowed);
-    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
+    if (ALLOWED_ORIGINS.length > 0 && origin && ALLOWED_ORIGINS.includes(origin)) {
+      headers.set('Access-Control-Allow-Origin', origin);
+    } else if (ALLOWED_ORIGINS.length === 0 && !origin) {
+      // SITE_URL not configured — same-origin only
+    }
+
+    headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token');
+    headers.set('Access-Control-Allow-Credentials', 'true');
+    headers.set('Access-Control-Max-Age', '86400');
 
     if (request.method === 'OPTIONS') {
-      return new NextResponse(null, { status: 204, headers: response.headers });
+      return new NextResponse(null, { status: 204, headers });
     }
 
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const cookieHeader = request.headers.get('cookie') || '';
-      const cookies = {};
-      cookieHeader.split(';').forEach(c => {
-        const [name, ...rest] = c.split('=');
-        cookies[name.trim()] = rest.join('=').trim();
-      });
-      if (cookies.access_token) {
-        response.headers.set('Authorization', `Bearer ${cookies.access_token}`);
+    // CSRF protection for state-changing methods
+    if (STATE_CHANGING_METHODS.includes(request.method)) {
+      // Exempt certain paths (public endpoints that don't need CSRF)
+      if (!isCsrfExempt(pathname)) {
+        const requestOrigin = request.headers.get('origin');
+        const referer = request.headers.get('referer');
+
+        // Must have either valid origin or valid referer
+        if (!requestOrigin && !referer) {
+          return NextResponse.json(
+            { error: 'Geçersiz istek' },
+            { status: 403 }
+          );
+        }
+
+        // If origin present, must match an allowed hostname (same protocol+host, port ignored)
+        if (requestOrigin && ALLOWED_ORIGINS.length > 0) {
+          const allowed = ALLOWED_ORIGINS.some(a => {
+            try {
+              const aUrl = new URL(a);
+              const oUrl = new URL(requestOrigin);
+              return aUrl.protocol === oUrl.protocol && aUrl.hostname === oUrl.hostname;
+            } catch { return false; }
+          });
+          if (!allowed) {
+            return NextResponse.json(
+              { error: 'Geçersiz istek kaynağı' },
+              { status: 403 }
+            );
+          }
+        }
+
+        // CSRF double-submit cookie verification
+        if (!verifyCsrfToken(request)) {
+          return NextResponse.json(
+            { error: 'CSRF token doğrulanamadı' },
+            { status: 403 }
+          );
+        }
       }
     }
+
+    // Ensure CSRF cookie exists for all API responses
+    ensureCsrfCookie(response);
+  }
+
+  // Ensure CSRF cookie for page loads (so JS can read it)
+  if (!pathname.startsWith('/api/') && !pathname.startsWith('/_next/')) {
+    ensureCsrfCookie(response);
   }
 
   return response;

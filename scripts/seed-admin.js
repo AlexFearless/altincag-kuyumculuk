@@ -16,16 +16,18 @@ async function seed() {
   const { data: existing } = await supabase
     .from('admins')
     .select('*')
-    .eq('email', 'admin@altincag.com')
+    .eq('email', process.env.ADMIN_EMAIL)
     .single();
 
-  const hash = await bcrypt.hash('Admin123!', 12);
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) { console.error('ADMIN_PASSWORD env required'); process.exit(1); }
+  const hash = await bcrypt.hash(adminPassword, 14);
 
   if (existing) {
     const { error } = await supabase
       .from('admins')
       .update({ password: hash })
-      .eq('email', 'admin@altincag.com');
+      .eq('email', process.env.ADMIN_EMAIL);
 
     if (error) throw error;
     console.log('Admin sifresi guncellendi');
@@ -33,7 +35,7 @@ async function seed() {
     const { error } = await supabase
       .from('admins')
       .insert({
-        email: 'admin@altincag.com',
+        email: process.env.ADMIN_EMAIL,
         password: hash,
         name: 'Admin',
         role: 'admin',

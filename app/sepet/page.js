@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { csrfFetch } from '@/lib/csrf';
 
 export default function CartPage() {
   const { items, updateQuantity, removeFromCart, getTotal, clearCart, loading } = useCart();
@@ -19,28 +20,26 @@ export default function CartPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('paytr');
-  const [testMode, setTestMode] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('havale');
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState('');
-  const [cardInfo, setCardInfo] = useState({
-    cardName: '',
-    cardNumber: '',
-    expiryMonth: '',
-    expiryYear: '',
-    cvv: '',
-  });
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [orderError, setOrderError] = useState('');
 
   useEffect(() => {
     if (user) {
+      const addr = user.address;
+      const street = typeof addr === 'string' ? addr : (addr?.street || addr?.address || '');
+      const city = typeof addr === 'object' ? (addr?.city || 'İstanbul') : 'İstanbul';
+      const district = typeof addr === 'object' ? (addr?.district || '') : '';
       setCustomerInfo({
         email: user.email || '',
         phone: user.phone || '',
-        address: user.address?.street || user.address || '',
-        city: user.address?.city || 'İstanbul',
-        district: user.address?.district || '',
+        address: street,
+        city,
+        district,
       });
     }
   }, [user]);
@@ -58,6 +57,7 @@ export default function CartPage() {
       const res = await fetch('/api/coupons/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ code: couponCode, orderAmount: getTotal(), cartCategories: [...new Set(items.map(i => i.product?.category).filter(Boolean))] }),
       });
       const data = await res.json();
@@ -87,19 +87,20 @@ export default function CartPage() {
     }
   };
 
-  const handleCheckout = async (e, overridePaymentMethod) => {
+  const handleCheckout = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+    setOrderError('');
 
-    const finalPaymentMethod = overridePaymentMethod || paymentMethod;
-    const isTestMode = overridePaymentMethod === 'havale' && testMode;
+    const userAddr = user?.address;
+    const userStreet = typeof userAddr === 'string' ? userAddr : (userAddr?.street || userAddr?.address || '');
 
     const finalCustomerInfo = {
       firstName: user?.name?.split(' ')[0] || 'Deneme',
       lastName: user?.name?.split(' ').slice(1).join(' ') || 'Kullanıcı',
       email: customerInfo.email || user?.email || '',
       phone: customerInfo.phone || user?.phone || '05550000000',
-      address: customerInfo.address || user?.address || 'Test Adres',
+      address: customerInfo.address || userStreet || 'Test Adres',
       city: customerInfo.city || 'İstanbul',
       district: customerInfo.district || 'Kadıköy',
     };
@@ -115,11 +116,11 @@ export default function CartPage() {
         image: item.product?.images?.[0] || '',
       }));
 
-      const res = await fetch('/api/orders', {
+      const res = await csrfFetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          guestId: localStorage.getItem('altincag_guest_id'),
+          guestId: typeof localStorage !== 'undefined' ? localStorage.getItem('altincag_guest_id') : '',
           userId: user?.id,
           customerInfo: finalCustomerInfo,
           specialInstructions,
@@ -127,7 +128,7 @@ export default function CartPage() {
           subtotal: getTotal(),
           shippingCost,
           totalAmount,
-          paymentMethod: finalPaymentMethod,
+          paymentMethod: 'havale',
           couponCode: couponDiscount?.code || '',
           discountAmount: discountAmount,
         }),
@@ -135,12 +136,23 @@ export default function CartPage() {
 
       const data = await res.json();
 
+      if (!res.ok) {
+        setOrderError(data.error || 'Sipariş oluşturulurken hata oluştu');
+        return;
+      }
+
       if (data.success) {
+        const bankRes = await fetch('/api/payment/havale');
+        const bankData = await bankRes.json();
+        setBankAccounts(bankData.accounts || []);
         setOrderSuccess(data.order);
         clearCart();
+      } else {
+        setOrderError(data.error || 'Sipariş oluşturulamadı');
       }
     } catch (error) {
       console.error('Sipariş hatası:', error);
+      setOrderError('Sipariş sırasında bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setSubmitting(false);
     }
@@ -150,17 +162,17 @@ export default function CartPage() {
     return (
       <div className="min-h-screen bg-cream-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-sm p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckIcon className="w-8 h-8 text-green-600" />
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ClockIcon className="w-8 h-8 text-amber-600" />
           </div>
           <h2 className="font-serif text-2xl font-bold text-earth-800 mb-2">
-            Siparişiniz Alındı!
+            Havale Bekleniyor
           </h2>
-          <p className="text-earth-500 mb-4">
+          <p className="text-earth-500 mb-2">
             Sipariş numaranız: <span className="font-semibold">{orderSuccess.orderNumber}</span>
           </p>
-          <p className="text-sm text-earth-400 mb-4">
-            Siparişiniz onay e-postası ile birlikte size bildirilecektir.
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            Siparişiniz <strong>henüz onaylanmamıştır</strong>. Aşağıdaki banka hesaplarına havale/EFT yaptıktan sonra siparişiniz onaylanacaktır.
           </p>
           {couponDiscount && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
@@ -172,16 +184,25 @@ export default function CartPage() {
               </p>
             </div>
           )}
-          <p className="text-sm text-earth-400 mb-6">
+          <p className="text-sm text-earth-400 mb-4">
             Toplam: <span className="font-bold text-gold-600 text-lg">{orderSuccess.totalAmount.toLocaleString('tr-TR')} TL</span>
           </p>
           {paymentMethod === 'havale' && (
-            <div className="bg-gold-50 border border-gold-200 rounded-lg p-4 mb-6 text-left">
-              <p className="text-sm font-semibold text-earth-800 mb-2">Havale Bilgileri:</p>
-              <p className="text-xs text-earth-600">Garanti Bankası TR12 3456 7890 1234 5678 9012 34</p>
-              <p className="text-xs text-earth-500 mt-1">Açıklama: Sipariş #{orderSuccess.orderNumber}</p>
+            <div className="bg-gold-50 border border-gold-200 rounded-lg p-4 mb-4 text-left">
+              <p className="text-sm font-semibold text-earth-800 mb-2">Havale/EFT Bilgileri:</p>
+              {bankAccounts.map((acc, i) => (
+                <div key={i} className="mb-2 last:mb-0">
+                  <p className="text-xs text-earth-600 font-medium">{acc.bankName}</p>
+                  <p className="text-xs text-earth-600">Hesap: {acc.accountName}</p>
+                  <p className="text-xs text-earth-600">IBAN: {acc.iban}</p>
+                </div>
+              ))}
+              <p className="text-xs text-amber-700 font-semibold mt-2">Açıklama kısmına <span className="underline">Sipariş #{orderSuccess.orderNumber}</span> yazmayı unutmayın!</p>
             </div>
           )}
+          <p className="text-xs text-earth-400 mb-4">
+            Havale sonrası 1 iş günü içinde onay e-postası gönderilecektir.
+          </p>
           <Link
             href="/"
             className="inline-block bg-gold-500 text-white px-6 py-3 rounded-sm font-medium
@@ -434,14 +455,7 @@ export default function CartPage() {
               )}
 
               {checkoutStep === 1 && (
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  if (testMode) {
-                    handleCheckout(e, 'havale');
-                  } else {
-                    setCheckoutStep(2);
-                  }
-                }} className="space-y-4" noValidate={testMode}>
+                <form onSubmit={handleCheckout} className="space-y-4" noValidate>
                   <button type="button" onClick={() => setCheckoutStep(0)} className="text-xs text-earth-400 hover:text-earth-600 mb-2">
                     ← Geri Dön
                   </button>
@@ -471,220 +485,31 @@ export default function CartPage() {
                     className="input-field text-sm"
                     required
                   />
-                  <div>
-                    <label className="block text-sm font-medium text-earth-700 mb-2">Ödeme Yöntemi</label>
-                    <div className="space-y-2">
-                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'paytr' ? 'border-gold-500 bg-gold-50' : 'border-earth-200 hover:border-gold-500'}`}>
-                        <input
-                          type="radio"
-                          name="payment"
-                          value="paytr"
-                          checked={paymentMethod === 'paytr'}
-                          onChange={() => setPaymentMethod('paytr')}
-                          className="text-gold-500 focus:ring-gold-500"
-                        />
-                        <div className="ml-2">
-                          <span className="text-sm text-earth-700 font-medium">Kredi Kartı / Banka Kartı</span>
-                          <p className="text-xs text-earth-400">Güvenli online ödeme</p>
-                        </div>
-                      </label>
-                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'havale' ? 'border-gold-500 bg-gold-50' : 'border-earth-200 hover:border-gold-500'}`}>
-                        <input
-                          type="radio"
-                          name="payment"
-                          value="havale"
-                          checked={paymentMethod === 'havale'}
-                          onChange={() => setPaymentMethod('havale')}
-                          className="text-gold-500 focus:ring-gold-500"
-                        />
-                        <div className="ml-2">
-                          <span className="text-sm text-earth-700 font-medium">Havale / EFT</span>
-                          <p className="text-xs text-earth-400">Banka hesabına transfer</p>
-                        </div>
-                      </label>
+                  <div className="bg-gold-50 border border-gold-200 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-earth-800 mb-1">Ödeme: Havale / EFT</p>
+                    <p className="text-xs text-earth-500">Sipariş sonrası banka hesap bilgileriniz görüntülenecektir.</p>
+                  </div>
+                  {orderError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-sm text-red-700">{orderError}</p>
                     </div>
-                  </div>
-                  <div>
-                    <label className="flex items-center p-3 border border-dashed border-orange-300 bg-orange-50 rounded-lg cursor-pointer transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={testMode}
-                        onChange={(e) => {
-                          setTestMode(e.target.checked);
-                          if (e.target.checked) setPaymentMethod('havale');
-                        }}
-                        className="text-orange-500 focus:ring-orange-500"
-                      />
-                      <div className="ml-2">
-                        <span className="text-sm text-orange-700 font-medium">Deneme Siparişi</span>
-                        <p className="text-xs text-orange-500">Kart bilgisi girmeden havale ile sipariş ver</p>
-                      </div>
-                    </label>
-                  </div>
+                  )}
                   <button
                     type="submit"
-                    className="w-full bg-gold-500 text-white py-3 rounded-sm font-medium
-                               hover:bg-gold-600 transition-colors"
-                  >
-                    {testMode ? 'Siparişi Onayla (Deneme)' : (paymentMethod === 'paytr' ? 'Kart Bilgilerine Geç' : 'Siparişi Onayla')}
-                  </button>
-                </form>
-              )}
-
-              {checkoutStep === 2 && paymentMethod === 'paytr' && (
-                <div className="space-y-4">
-                  <button type="button" onClick={() => setCheckoutStep(1)} className="text-xs text-earth-400 hover:text-earth-600">
-                    ← Geri Dön
-                  </button>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <div className="flex items-center space-x-2">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                      </svg>
-                       <span className="text-xs text-blue-700 font-medium">256-bit SSL ile güvenli ödeme</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-earth-700 mb-1">Kart Üzerindeki İsim</label>
-                    <input
-                      type="text"
-                      placeholder="Ad Soyad"
-                      value={cardInfo.cardName}
-                      onChange={(e) => setCardInfo({ ...cardInfo, cardName: e.target.value })}
-                      className="input-field text-sm"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-earth-700 mb-1">Kart Numarası</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="cc-number"
-                      placeholder="0000 0000 0000 0000"
-                      value={cardInfo.cardNumber}
-                      onChange={(e) => {
-                        let val = e.target.value.replace(/\D/g, '').substring(0, 16);
-                        val = val.replace(/(\d{4})(?=\d)/g, '$1 ');
-                        setCardInfo({ ...cardInfo, cardNumber: val });
-                      }}
-                      className="input-field text-sm"
-                      maxLength={19}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-earth-700 mb-1">Ay</label>
-                      <select
-                        value={cardInfo.expiryMonth}
-                        onChange={(e) => setCardInfo({ ...cardInfo, expiryMonth: e.target.value })}
-                        className="input-field text-sm"
-                        required
-                      >
-                        <option value="">Ay</option>
-                        {Array.from({ length: 12 }, (_, i) => (
-                          <option key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                            {String(i + 1).padStart(2, '0')}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-earth-700 mb-1">Yıl</label>
-                      <select
-                        value={cardInfo.expiryYear}
-                        onChange={(e) => setCardInfo({ ...cardInfo, expiryYear: e.target.value })}
-                        className="input-field text-sm"
-                        required
-                      >
-                        <option value="">Yıl</option>
-                        {Array.from({ length: 10 }, (_, i) => (
-                          <option key={i} value={String(2025 + i).slice(-2)}>
-                            {2025 + i}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-earth-700 mb-1">CVV</label>
-                      <input
-                        type="password"
-                        placeholder="•••"
-                        value={cardInfo.cvv}
-                        onChange={(e) => setCardInfo({ ...cardInfo, cvv: e.target.value.replace(/\D/g, '').substring(0, 4) })}
-                        className="input-field text-sm"
-                        maxLength={4}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-earth-50 rounded-lg p-3 space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-earth-500">Toplam</span>
-                      <span className="font-bold text-gold-600">{totalAmount.toLocaleString('tr-TR')} TL</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleCheckout}
-                    disabled={submitting}
-                    className="w-full bg-gold-500 text-white py-3 rounded-sm font-medium
-                               hover:bg-gold-600 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
-                  >
-                    {submitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>İşleniyor...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                        </svg>
-                        <span>{totalAmount.toLocaleString('tr-TR')} TL Öde</span>
-                      </>
-                    )}
-                  </button>
-
-                  <div className="flex items-center justify-center space-x-4 pt-2">
-                    <div className="flex items-center space-x-1 text-earth-400">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                      </svg>
-                      <span className="text-xs">Güvenli</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {checkoutStep === 2 && paymentMethod === 'havale' && (
-                <div className="space-y-4">
-                  <button type="button" onClick={() => setCheckoutStep(1)} className="text-xs text-earth-400 hover:text-earth-600">
-                    ← Geri Dön
-                  </button>
-                  <div className="bg-gold-50 border border-gold-200 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-earth-800 mb-2">Havale / EFT Bilgileri</p>
-                    <div className="space-y-1 text-xs text-earth-600">
-                      <p><span className="font-medium">Banka:</span> Garanti Bankası</p>
-                      <p><span className="font-medium">Hesap Adı:</span> AltınÇağ Kuyumculuk</p>
-                      <p><span className="font-medium">IBAN:</span> TR12 3456 7890 1234 5678 9012 34</p>
-                      <p><span className="font-medium">Açıklama:</span> Sipariş numaranızı yazmayı unutmayın</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleCheckout}
                     disabled={submitting}
                     className="w-full bg-gold-500 text-white py-3 rounded-sm font-medium
                                hover:bg-gold-600 active:scale-[0.98] transition-all duration-150 disabled:opacity-50"
                   >
-                    {submitting ? 'İşleniyor...' : 'Siparişi Onayla'}
+                    {submitting ? (
+                      <span className="flex items-center justify-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>İşleniyor...</span>
+                      </span>
+                    ) : (
+                      'Siparişi Onayla'
+                    )}
                   </button>
-                </div>
+                </form>
               )}
             </div>
           </div>
@@ -714,6 +539,14 @@ function CheckIcon({ className }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+    </svg>
+  );
+}
+
+function ClockIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }

@@ -1,7 +1,12 @@
-import { withAuth } from '@/lib/auth';
+import { withAdminRole } from '@/lib/auth';
 import { getDb } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rateLimit';
+
+const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function handler(req, res) {
+  if (!(await adminLimiter(req, res))) return;
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -30,7 +35,7 @@ async function handler(req, res) {
     const costItems = costResult.status === 'fulfilled' ? costResult.value : { data: [] };
 
     const revenue = allOrders
-      .filter(o => o.order_status !== 'cancelled')
+      .filter(o => o.payment_status === 'odendi' || o.payment_status === 'paid')
       .reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
 
     let totalCost = 0;
@@ -91,4 +96,4 @@ async function handler(req, res) {
   }
 }
 
-export default withAuth(handler);
+export default withAdminRole()(handler);

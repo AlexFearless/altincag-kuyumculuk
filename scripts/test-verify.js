@@ -1,3 +1,4 @@
+require('dotenv').config({ path: '../.env.local' });
 const http = require('http');
 
 function post(path, data, token) {
@@ -18,7 +19,7 @@ function post(path, data, token) {
 
 async function main() {
   // 1. Login al
-  const login = await post('/api/admin/login', { email: 'admin@altincag.com', password: 'Admin123!' });
+  const login = await post('/api/admin/login', { email: process.env.ADMIN_EMAIL || '', password: process.env.ADMIN_PASSWORD || '' });
   console.log('1. Login:', login.success ? 'OK' : 'FAIL - ' + JSON.stringify(login));
   if (!login.success) return;
 

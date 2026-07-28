@@ -3,23 +3,24 @@ import jwt from 'jsonwebtoken';
 import { sanitize, validateEmail, validatePhone } from '@/lib/sanitize';
 import { getJwtSecret } from '@/lib/secrets';
 import { rateLimit } from '@/lib/rateLimit';
+import { parseCookies, getTokenFromRequest } from '@/lib/cookieUtils';
 
 const JWT_SECRET = getJwtSecret();
 const profileLimiter = rateLimit({ windowMs: 60000, max: 20, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 export default async function handler(req, res) {
-  if (!profileLimiter(req, res)) return;
+  if (!(await profileLimiter(req, res))) return;
 
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
 
   if (req.method === 'GET') {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const token = getTokenFromRequest(req);
+      if (!token) {
         return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
       }
-      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
 
       const { data: user } = await db
         .from('users')
@@ -47,12 +48,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = getTokenFromRequest(req);
+    if (!token) {
       return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
     }
 
-    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     const { name, phone, email, address } = req.body;
     const updateData = {};
@@ -72,7 +73,14 @@ export default async function handler(req, res) {
       if (!validateEmail(email)) {
         return res.status(400).json({ error: 'Geçersiz e-posta adresi' });
       }
-      updateData.email = String(email).toLowerCase().trim();
+      const cleanEmail = String(email).toLowerCase().trim();
+      // If email is changing, require verification instead of direct update
+      if (cleanEmail !== decoded.email?.toLowerCase()) {
+        return res.status(400).json({
+          error: 'E-posta değişikliği için müşteri hizmetleri ile iletişime geçin',
+        });
+      }
+      // Email not changing, skip update
     }
     if (address !== undefined) updateData.address = typeof address === 'object' ? address : sanitize(String(address || ''));
 

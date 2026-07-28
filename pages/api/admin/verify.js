@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { getDb } from '@/lib/supabase';
 import { getJwtSecret } from '@/lib/secrets';
+import { parseCookies, getTokenFromRequest } from '@/lib/cookieUtils';
+import { isTokenBlacklisted } from '@/lib/auth';
 
 const JWT_SECRET = getJwtSecret();
 
@@ -11,14 +13,24 @@ export default async function handler(req, res) {
 
   try {
     let db;
-    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı' }); }
 
-    const { token } = req.body;
+    const token = getTokenFromRequest(req);
     if (!token || typeof token !== 'string') {
       return res.status(400).json({ success: false, error: 'Token gerekli' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+
+    // Check blacklist
+    if (decoded.jti && await isTokenBlacklisted(decoded.jti)) {
+      return res.status(401).json({ success: false, error: 'Yetkilendirme başarısız' });
+    }
+
+    // Verify this is an admin token
+    if (decoded.userType !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Yetkilendirme başarısız' });
+    }
 
     const { data: admin } = await db
       .from('admins')
@@ -27,15 +39,19 @@ export default async function handler(req, res) {
       .single();
 
     if (!admin) {
-      return res.status(401).json({ success: false, error: 'Admin bulunamadı' });
+      return res.status(401).json({ success: false, error: 'Yetkilendirme başarısız' });
     }
 
     if (!admin.is_active) {
       return res.status(403).json({ success: false, error: 'Hesabınız devre dışı' });
     }
 
-    res.status(200).json({ success: true, admin: { id: admin.id, name: admin.name, email: admin.email } });
+    if (!admin.role || !['super_admin', 'admin'].includes(admin.role)) {
+      return res.status(403).json({ success: false, error: 'Yetkilendirme başarısız' });
+    }
+
+    res.status(200).json({ success: true, admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role } });
   } catch {
-    res.status(401).json({ success: false, error: 'Geçersiz token' });
+    res.status(401).json({ success: false, error: 'Yetkilendirme başarısız' });
   }
 }

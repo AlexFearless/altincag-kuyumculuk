@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!productsLimiter(req, res)) return;
+  if (!(await productsLimiter(req, res))) return;
 
   try {
     let db;
