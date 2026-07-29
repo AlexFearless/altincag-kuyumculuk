@@ -24,10 +24,20 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
-    const delta = e.deltaY * -0.002;
+    const container = imageContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const cursorX = e.clientX - rect.left - rect.width / 2;
+    const cursorY = e.clientY - rect.top - rect.height / 2;
+    const delta = e.deltaY * -0.003;
     setZoom(prev => {
       const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev + delta));
-      if (next === 1) setPan({ x: 0, y: 0 });
+      if (next === 1) { setPan({ x: 0, y: 0 }); return next; }
+      const ratio = next / prev;
+      setPan(p => ({
+        x: cursorX - ratio * (cursorX - p.x),
+        y: cursorY - ratio * (cursorY - p.y),
+      }));
       return next;
     });
   }, []);
@@ -220,13 +230,6 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
                   %{Math.round(zoom * 100)}
                 </div>
               )}
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-earth-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-              <span>Tekerlekle yakınlaştır • Çift tıkla ile sabitle</span>
             </div>
 
             {product.images && product.images.length > 1 && (
@@ -422,9 +425,9 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
                   const el = document.getElementById('related-scroll');
                   if (el) el.scrollBy({ left: -300, behavior: 'smooth' });
                 }}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 bg-white shadow-lg rounded-full w-10 h-10 flex items-center justify-center text-earth-600 hover:text-gold-600 hover:shadow-xl transition-all opacity-0 group-hover:opacity-100 z-10"
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 bg-red-500 shadow-lg rounded-full w-12 h-12 flex items-center justify-center text-white hover:bg-red-600 hover:shadow-xl transition-all opacity-0 group-hover:opacity-100 z-10"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                 </svg>
               </button>
@@ -433,9 +436,9 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
                   const el = document.getElementById('related-scroll');
                   if (el) el.scrollBy({ left: 300, behavior: 'smooth' });
                 }}
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 bg-white shadow-lg rounded-full w-10 h-10 flex items-center justify-center text-earth-600 hover:text-gold-600 hover:shadow-xl transition-all opacity-0 group-hover:opacity-100 z-10"
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 bg-red-500 shadow-lg rounded-full w-12 h-12 flex items-center justify-center text-white hover:bg-red-600 hover:shadow-xl transition-all opacity-0 group-hover:opacity-100 z-10"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
