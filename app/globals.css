@@ -30,6 +30,7 @@ body {
   color: var(--earth-700);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  zoom: 0.9;
 }
 
 h1, h2, h3, h4, h5, h6 {
