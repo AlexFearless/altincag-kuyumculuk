@@ -138,16 +138,16 @@ export default function Footer() {
 
       {/* Politikalar + Copyright */}
       <div className="border-t border-earth-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className="flex flex-wrap items-center justify-center gap-5">
               {footerLinks.politikalar.map((link) => (
-                <Link key={link.href} href={link.href} className="text-xs text-earth-400 hover:text-gold-500 transition-colors">
+                <Link key={link.href} href={link.href} className="text-sm text-earth-500 hover:text-gold-600 transition-colors">
                   {link.name}
                 </Link>
               ))}
             </div>
-            <p className="text-xs text-earth-400">
+            <p className="text-sm text-earth-500">
               &copy; {new Date().getFullYear()} AltınÇağ Kuyumculuk. Tüm hakları saklıdır.
             </p>
           </div>
