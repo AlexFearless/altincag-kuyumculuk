@@ -26,6 +26,9 @@ export default async function handler(req, res) {
     if (typeof email !== 'string' || typeof password !== 'string') {
       return res.status(400).json({ error: 'Geçersiz giriş bilgileri' });
     }
+    if (email.length > 254 || password.length > 128) {
+      return res.status(400).json({ error: 'Geçersiz giriş bilgileri' });
+    }
 
     const cleanEmail = email.toLowerCase().trim();
     const identifier = `user:${cleanEmail}`;
@@ -50,14 +53,11 @@ export default async function handler(req, res) {
     }
 
     if (!user.is_active && !user.email_verified) {
-      return res.status(403).json({
-        error: 'Hesabınız aktifleştirilmemiş',
-        needsVerification: true,
-      });
+      return res.status(401).json({ error: 'Geçersiz e-posta veya şifre' });
     }
 
     if (!user.is_active) {
-      return res.status(403).json({ error: 'Hesabınız devre dışı' });
+      return res.status(401).json({ error: 'Geçersiz e-posta veya şifre' });
     }
 
     const isMatch = await bcrypt.compare(String(password), user.password);

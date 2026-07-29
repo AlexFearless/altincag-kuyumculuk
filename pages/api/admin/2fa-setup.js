@@ -25,13 +25,10 @@ async function handler(req, res) {
       .eq('id', adminId);
 
     if (error) {
-      const msg = error.message || '';
-      if (msg.includes('totp_secret') || msg.includes('column') || msg.includes('does not exist') || msg.includes('relation') || msg.includes('schema cache')) {
-        return res.status(500).json({
-          error: '2FA sütunları eksik. Veritabanı yöneticisi ile iletişime geçin.',
-        });
-      }
-      throw error;
+      console.error('2FA setup DB error:', error.code);
+      return res.status(500).json({
+        error: '2FA kurulumu sırasında hata oluştu.',
+      });
     }
 
     const { data: admin } = await db
@@ -44,7 +41,6 @@ async function handler(req, res) {
 
     res.status(200).json({
       success: true,
-      secret,
       qrUri: uri,
     });
   } catch (error) {

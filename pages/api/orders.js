@@ -182,7 +182,7 @@ export default async function handler(req, res) {
 
     if (orderInsert.error) {
       const err = orderInsert.error;
-      console.error('Order insert error:', err.message, err.code, err.details, err.hint);
+      console.error('Order insert error:', err.code);
 
       if (err.code === '23514') {
         orderInsert = await db
@@ -210,7 +210,7 @@ export default async function handler(req, res) {
           .single();
 
         if (orderInsert.error) {
-          console.error('Order insert fallback error:', orderInsert.error.message, orderInsert.error.code);
+          console.error('Order insert fallback error:', orderInsert.error.code);
           return res.status(500).json({ error: 'Sipariş oluşturulamadı. Lütfen yöneticiyle iletişime geçin.' });
         }
       } else if (err.code === '23505') {
@@ -261,7 +261,7 @@ export default async function handler(req, res) {
 
     const { error: itemsError } = await db.from('order_items').insert(orderItems);
     if (itemsError) {
-      console.error('Order items insert error:', itemsError.message, itemsError.code);
+      console.error('Order items insert error:', itemsError.code);
     }
 
     step = 'update_stock';
@@ -302,7 +302,7 @@ export default async function handler(req, res) {
           }).catch(() => {});
         }
       } catch (stockErr) {
-        console.error('Stock update error for product:', vi.product_id, stockErr.message);
+        console.error('Stock update error for product:', vi.product_id);
         stockErrors.push(`${vi.name}: ${stockErr.message}`);
       }
     }

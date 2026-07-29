@@ -1,10 +1,15 @@
 import { withAdminRole } from '@/lib/auth';
 import { getDb } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rateLimit';
+
+const statusLimiter = rateLimit({ windowMs: 300000, max: 5, message: 'Çok fazla istek. 5 dakika bekleyin.' });
 
 async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!(await statusLimiter(req, res))) return;
 
   try {
     let db;
@@ -17,12 +22,8 @@ async function handler(req, res) {
       .single();
 
     if (error) {
-      const msg = error.message || '';
-      if (msg.includes('totp_enabled') || msg.includes('column') || msg.includes('does not exist') || msg.includes('schema cache')) {
-        return res.status(200).json({ success: true, enabled: false, missingColumns: true });
-      }
-      throw error;
-    }
+      console.error('2FA status error:', error.code);
+      res.status(500).json({ error: 'Durum kontrol edilemedi' });
 
     res.status(200).json({
       success: true,

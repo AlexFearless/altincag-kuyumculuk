@@ -28,8 +28,10 @@ function getGuestIdFromRequest(req) {
 }
 
 function setGuestIdCookie(res, guestId) {
+  const isProd = process.env.NODE_ENV === 'production';
+  const secure = isProd ? '; Secure' : '';
   const existing = res.getHeader('Set-Cookie') || [];
-  const cookieStr = `guest_id=${guestId}; Path=/; Max-Age=${90 * 24 * 60 * 60}; SameSite=Lax; HttpOnly`;
+  const cookieStr = `guest_id=${guestId}; Path=/; Max-Age=${90 * 24 * 60 * 60}; SameSite=Lax; HttpOnly${secure}`;
   if (Array.isArray(existing)) {
     res.setHeader('Set-Cookie', [...existing, cookieStr]);
   } else {

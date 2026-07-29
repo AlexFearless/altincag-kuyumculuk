@@ -66,6 +66,7 @@ async function handlePost(db, req, res) {
     if (!name || !discountType || discountValue === undefined || !startDate || !endDate) {
       return res.status(400).json({ error: 'Kampanya adı, indirim tipi, indirim değeri, başlangıç ve bitiş tarihi zorunludur' });
     }
+    if (name.trim().length > 100) return res.status(400).json({ error: 'Kampanya adı 100 karakterden uzun olamaz' });
     if (!['percent', 'fixed'].includes(discountType)) {
       return res.status(400).json({ error: 'İndirim tipi percent veya fixed olmalıdır' });
     }
@@ -120,7 +121,10 @@ async function handlePut(db, req, res) {
     if (!id) return res.status(400).json({ error: 'Kampanya ID zorunludur' });
 
     const updateData = {};
-    if (name !== undefined) updateData.name = String(name).trim();
+    if (name !== undefined) {
+      if (String(name).trim().length > 100) return res.status(400).json({ error: 'Kampanya adı 100 karakterden uzun olamaz' });
+      updateData.name = String(name).trim();
+    }
     if (discountType !== undefined) {
       if (!['percent', 'fixed'].includes(discountType)) return res.status(400).json({ error: 'İndirim tipi percent veya fixed olmalıdır' });
       updateData.discount_type = discountType;

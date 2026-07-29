@@ -44,6 +44,8 @@ async function handlePost(db, req, res) {
   try {
     const { title, message, bgColor = '#B8860B', textColor = '#FFFFFF', isActive = true } = req.body;
     if (!title?.trim() || !message?.trim()) return res.status(400).json({ error: 'Başlık ve mesaj gerekli' });
+    if (title.trim().length > 200) return res.status(400).json({ error: 'Başlık 200 karakterden uzun olamaz' });
+    if (message.trim().length > 2000) return res.status(400).json({ error: 'Mesaj 2000 karakterden uzun olamaz' });
     if (!isValidColor(bgColor)) return res.status(400).json({ error: 'Geçersiz arka plan rengi' });
     if (!isValidColor(textColor)) return res.status(400).json({ error: 'Geçersiz metin rengi' });
 
@@ -77,8 +79,14 @@ async function handlePut(db, req, res) {
     }
 
     const updates = {};
-    if (title !== undefined) updates.title = sanitize(title.trim());
-    if (message !== undefined) updates.message = sanitize(message.trim());
+    if (title !== undefined) {
+      if (String(title).trim().length > 200) return res.status(400).json({ error: 'Başlık 200 karakterden uzun olamaz' });
+      updates.title = sanitize(title.trim());
+    }
+    if (message !== undefined) {
+      if (String(message).trim().length > 2000) return res.status(400).json({ error: 'Mesaj 2000 karakterden uzun olamaz' });
+      updates.message = sanitize(message.trim());
+    }
     if (bgColor !== undefined) {
       if (!isValidColor(bgColor)) return res.status(400).json({ error: 'Geçersiz arka plan rengi' });
       updates.bg_color = bgColor;

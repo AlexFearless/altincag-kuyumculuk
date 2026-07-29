@@ -1,24 +1,19 @@
 import { getDb } from '@/lib/supabase';
 import { sanitize, validateEmail } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/rateLimit';
-import jwt from 'jsonwebtoken';
-import { getJwtSecret } from '@/lib/secrets';
+import { verifyToken } from '@/lib/auth';
 
 const msgLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla mesaj. 1 dakika bekleyin.' });
 
 async function verifyAdminToken(db, req) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  try {
-    const JWT_SECRET = getJwtSecret();
-    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET, { algorithms: ['HS256'] });
-    const { data: admin } = await db.from('admins').select('id, name, role, is_active').eq('id', decoded.id).single();
-    if (!admin || !admin.is_active) return null;
-    if (!admin.role || !['super_admin', 'admin'].includes(admin.role)) return null;
-    return admin;
-  } catch {
-    return null;
-  }
+  const decoded = await verifyToken(authHeader.split(' ')[1]);
+  if (!decoded || decoded.userType !== 'admin') return null;
+  const { data: admin } = await db.from('admins').select('id, name, role, is_active').eq('id', decoded.id).single();
+  if (!admin || !admin.is_active) return null;
+  if (!admin.role || !['super_admin', 'admin'].includes(admin.role)) return null;
+  return admin;
 }
 
 function mapMessage(m) {
@@ -119,8 +114,9 @@ async function handlePut(db, req, res, admin) {
 
     if (reply !== undefined && String(reply).trim()) {
       if (String(reply).length > 5000) return res.status(400).json({ error: 'Yanıt çok uzun' });
+      const senderNameClean = sanitize(String(senderName || 'Admin').substring(0, 100));
       await db.from('message_replies').insert({
-        message_id: id, sender: 'admin', sender_name: sanitize(admin.name || 'Admin'),
+        message_id: id, sender: 'admin', sender_name: senderNameClean,
         text: sanitize(String(reply).trim()),
       });
       await db.from('messages').update({ status: 'answered' }).eq('id', id);

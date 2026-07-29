@@ -21,8 +21,8 @@ async function handler(req, res) {
     if (percent === undefined || isNaN(Number(percent))) {
       return res.status(400).json({ error: 'Yüzde değeri gerekli' });
     }
-    if (Number(percent) <= 0 || Number(percent) > 500) {
-      return res.status(400).json({ error: 'Yüzde değeri 0-500 arasında olmalıdır' });
+    if (Number(percent) <= 0 || Number(percent) > 100) {
+      return res.status(400).json({ error: 'Yüzde değeri 0-100 arasında olmalıdır' });
     }
 
     let query = db.from('products').select('id, price, name').eq('is_active', true);

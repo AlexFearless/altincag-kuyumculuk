@@ -1,26 +1,21 @@
-import jwt from 'jsonwebtoken';
 import { getDb } from '@/lib/supabase';
-import { getJwtSecret } from '@/lib/secrets';
 import { rateLimit } from '@/lib/rateLimit';
 import { parseCookies, getTokenFromRequest } from '@/lib/cookieUtils';
+import { verifyToken } from '@/lib/auth';
 import { getClientIp } from '@/lib/getClientIp';
 
-const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
+const adminLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function verifyAdminActive(db, token) {
-  try {
-    const JWT_SECRET = getJwtSecret();
-    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-    const { data: admin } = await db
-      .from('admins')
-      .select('id, is_active, role')
-      .eq('id', decoded.id)
-      .single();
-    if (!admin || !admin.is_active) return null;
-    return { decoded, role: admin.role };
-  } catch {
-    return null;
-  }
+  const decoded = await verifyToken(token);
+  if (!decoded || decoded.userType !== 'admin') return null;
+  const { data: admin } = await db
+    .from('admins')
+    .select('id, is_active, role')
+    .eq('id', decoded.id)
+    .single();
+  if (!admin || !admin.is_active) return null;
+  return { decoded, role: admin.role };
 }
 
 export async function createLog(db, { action, adminEmail, targetType, targetId, details, req }) {
@@ -50,7 +45,7 @@ export default async function handler(req, res) {
   const adminResult = await verifyAdminActive(db, token);
   if (!adminResult) return res.status(401).json({ error: 'Geçersiz veya pasif hesap' });
 
-  if (!adminResult.role || !['super_admin', 'admin', 'superadmin'].includes(adminResult.role)) {
+  if (!adminResult.role || !['super_admin', 'admin'].includes(adminResult.role)) {
     return res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
   }
 

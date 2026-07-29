@@ -2,9 +2,14 @@ import { getDb } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '@/lib/secrets';
 import { parseCookies } from '@/lib/cookieUtils';
+import { rateLimit } from '@/lib/rateLimit';
+import { isTokenBlacklisted } from '@/lib/auth';
+
+const ordersLimiter = rateLimit({ windowMs: 60000, max: 20, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (!(await ordersLimiter(req, res))) return;
 
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'DB error' }); }
@@ -15,8 +20,14 @@ export default async function handler(req, res) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+
+    if (decoded.jti && await isTokenBlacklisted(decoded.jti)) {
+      return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
+    }
+
     const { data: user } = await db.from('users').select('id, email, name, is_active').eq('id', decoded.id).single();
     if (!user) return res.status(401).json({ error: 'Kullanıcı bulunamadı' });
+    if (!user.is_active) return res.status(403).json({ error: 'Hesabınız devre dışı' });
 
     const email = user.email;
     const { data: emailOrders } = await db.from('orders').select('*').eq('customer_email', email).order('created_at', { ascending: false });

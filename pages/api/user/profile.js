@@ -51,7 +51,11 @@ export default async function handler(req, res) {
     if (email !== undefined) {
       return res.status(400).json({ error: 'E-posta değişikliği için müşteri hizmetleri ile iletişime geçin' });
     }
-    if (address !== undefined) updateData.address = typeof address === 'object' ? address : sanitize(String(address || ''));
+    if (address !== undefined) {
+      const addr = typeof address === 'object' ? address : String(address || '');
+      if (typeof addr === 'string' && addr.length > 500) return res.status(400).json({ error: 'Adres 500 karakterden uzun olamaz' });
+      updateData.address = typeof address === 'object' ? address : sanitize(addr);
+    }
 
     if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Güncellenecek alan yok' });
 

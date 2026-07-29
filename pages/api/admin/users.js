@@ -1,29 +1,23 @@
-import jwt from 'jsonwebtoken';
 import { getDb } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 import { createLog } from '@/pages/api/admin/logs';
 import { sanitize, validateEmail, validatePhone } from '@/lib/sanitize';
-import { getJwtSecret } from '@/lib/secrets';
 import { rateLimit } from '@/lib/rateLimit';
 import { parseCookies, getTokenFromRequest } from '@/lib/cookieUtils';
-import { revokeAllUserTokens } from '@/lib/auth';
+import { revokeAllUserTokens, verifyToken } from '@/lib/auth';
 
-const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
+const adminLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function verifyAdminActive(db, token) {
-  try {
-    const JWT_SECRET = getJwtSecret();
-    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-    const { data: admin } = await db
-      .from('admins')
-      .select('id, is_active, email, role')
-      .eq('id', decoded.id)
-      .single();
-    if (!admin || !admin.is_active) return null;
-    return { id: decoded.id, email: admin.email, role: admin.role };
-  } catch {
-    return null;
-  }
+  const decoded = await verifyToken(token);
+  if (!decoded || decoded.userType !== 'admin') return null;
+  const { data: admin } = await db
+    .from('admins')
+    .select('id, is_active, email, role')
+    .eq('id', decoded.id)
+    .single();
+  if (!admin || !admin.is_active) return null;
+  return { id: decoded.id, email: admin.email, role: admin.role };
 }
 
 function mapUser(u) {
