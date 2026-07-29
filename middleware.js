@@ -1,20 +1,5 @@
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
-import fs from 'fs';
-import path from 'path';
-
-const isSetupComplete = (() => {
-  try {
-    const envOk = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.JWT_SECRET);
-    if (envOk) return true;
-    const cfgPath = path.join(process.cwd(), 'config.json');
-    if (fs.existsSync(cfgPath)) {
-      const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-      return !!(cfg.supabaseUrl && cfg.supabaseServiceKey && cfg.jwtSecret);
-    }
-  } catch {}
-  return false;
-})();
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || '';
 
@@ -75,15 +60,17 @@ const CSRF_EXEMPT_PATHS = [
 
 const SETUP_PATHS = ['/setup', '/api/setup', '/api/setup-status'];
 
-function getJwtSecretMiddleware() {
-  try {
-    if (process.env.JWT_SECRET) return new TextEncoder().encode(process.env.JWT_SECRET);
-    const cfgPath = path.join(process.cwd(), 'config.json');
-    if (fs.existsSync(cfgPath)) {
-      const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-      if (cfg.jwtSecret) return new TextEncoder().encode(cfg.jwtSecret);
-    }
-  } catch {}
+function isSetupComplete() {
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return true;
+  }
+  return false;
+}
+
+function getJwtSecret() {
+  if (process.env.JWT_SECRET) {
+    return new TextEncoder().encode(process.env.JWT_SECRET);
+  }
   return null;
 }
 
@@ -92,7 +79,7 @@ async function verifyAdminToken(request) {
   const match = cookieHeader.match(/access_token=([^;]+)/);
   if (!match) return null;
 
-  const JWT_SECRET = getJwtSecretMiddleware();
+  const JWT_SECRET = getJwtSecret();
   if (!JWT_SECRET) return null;
 
   try {
@@ -168,14 +155,15 @@ export async function middleware(request) {
   headers.set('X-Nonce', nonce);
 
   const pathname = request.nextUrl.pathname;
+  const setupDone = isSetupComplete();
 
-  if (!isSetupComplete && !SETUP_PATHS.includes(pathname) && !pathname.startsWith('/_next') && !pathname.startsWith('/favicon') && !pathname.endsWith('.png') && !pathname.endsWith('.jpg') && !pathname.endsWith('.jpeg') && !pathname.endsWith('.svg') && !pathname.endsWith('.css') && !pathname.endsWith('.js')) {
+  if (!setupDone && !SETUP_PATHS.includes(pathname) && !pathname.startsWith('/_next') && !pathname.startsWith('/favicon') && !pathname.endsWith('.png') && !pathname.endsWith('.jpg') && !pathname.endsWith('.jpeg') && !pathname.endsWith('.svg') && !pathname.endsWith('.css') && !pathname.endsWith('.js')) {
     const url = request.nextUrl.clone();
     url.pathname = '/setup';
     return NextResponse.redirect(url);
   }
 
-  if (isSetupComplete && pathname === '/setup') {
+  if (setupDone && pathname === '/setup') {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);
