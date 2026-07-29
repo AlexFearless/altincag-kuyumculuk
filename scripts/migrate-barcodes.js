@@ -30,7 +30,7 @@ async function migrateBarcodes() {
       continue;
     }
 
-    const barcodePattern = /^(KP|kp|Kp|kP)\s*\d+$/i;
+    const barcodePattern = /^(KLY|kly|KP|BLK|ZNC|)\s*\d+$/i;
     const isBarcode = barcodePattern.test(desc);
 
     if (isBarcode && !product.barcode) {

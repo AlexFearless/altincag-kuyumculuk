@@ -139,7 +139,7 @@ async function handlePost(db, req, res) {
 
 async function handlePut(db, req, res) {
   try {
-    const { id, name, barcode, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType, isActive, bulkUpdate, productIds, field, value } = req.body;
+    const { id, name, barcode, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType, isActive, bulkUpdate, productIds, field, value, mode } = req.body;
 
     if (bulkUpdate && productIds && productIds.length > 0) {
       if (!field || (field !== 'price' && field !== 'stock')) {
@@ -147,6 +147,31 @@ async function handlePut(db, req, res) {
       }
       if (isNaN(Number(value)) || Number(value) < 0) {
         return res.status(400).json({ error: 'Geçersiz değer' });
+      }
+
+      if (field === 'price' && mode) {
+        const { data: currentProducts } = await db
+          .from('products')
+          .select('id, price')
+          .in('id', productIds);
+
+        if (currentProducts && currentProducts.length > 0) {
+          const updates = currentProducts.map(p => {
+            let newPrice;
+            if (mode === 'tl') {
+              newPrice = Math.round((p.price + Number(value)) * 100) / 100;
+            } else if (mode === 'percent') {
+              newPrice = Math.round(p.price * (1 + Number(value) / 100) * 100) / 100;
+            } else {
+              newPrice = Number(value);
+            }
+            return db.from('products').update({ price: newPrice }).eq('id', p.id);
+          });
+          await Promise.all(updates);
+        }
+
+        createLog(db, { action: `Toplu fiyat güncellendi (${mode === 'tl' ? '+TL' : '+%'})`, adminEmail: req.admin?.email || 'admin', targetType: 'product', targetId: productIds.join(','), details: { count: productIds.length, field, value, mode }, req });
+        return res.status(200).json({ success: true, updated: productIds.length });
       }
 
       const updateData = {};

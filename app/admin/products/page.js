@@ -24,6 +24,7 @@ export default function AdminProducts() {
   const [bulkStockModal, setBulkStockModal] = useState(false);
   const [bulkDiscountModal, setBulkDiscountModal] = useState(false);
   const [bulkPriceValue, setBulkPriceValue] = useState('');
+  const [bulkPriceMode, setBulkPriceMode] = useState('tl');
   const [bulkStockValue, setBulkStockValue] = useState('');
   const [bulkDiscountPercent, setBulkDiscountPercent] = useState('');
   const [bulkDiscountType, setBulkDiscountType] = useState('real');
@@ -176,7 +177,7 @@ export default function AdminProducts() {
     }
   };
 
-  const handleBulkUpdate = async (field, value) => {
+  const handleBulkUpdate = async (field, value, mode) => {
     if (selectedProducts.length === 0) return;
     try {
       const res = await adminFetch('/api/admin/products', {
@@ -186,6 +187,7 @@ export default function AdminProducts() {
           productIds: selectedProducts,
           field,
           value: Number(value),
+          mode: mode || 'set',
         }),
       });
       if (res.ok) {
@@ -459,7 +461,9 @@ export default function AdminProducts() {
                           {product.name}
                         </span>
                         {product.barcode && (
-                          <span className="text-xs text-earth-400 ml-1">• {product.barcode}</span>
+                          <span className="inline-flex items-center mt-1 px-2 py-0.5 bg-earth-100 text-earth-600 text-xs font-mono font-semibold rounded">
+                            {product.barcode}
+                          </span>
                         )}
                       </div>
                     </td>
@@ -848,9 +852,38 @@ export default function AdminProducts() {
             <p className="text-sm text-earth-500 mb-4">
               {selectedProducts.length} ürün seçildi
             </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-earth-700 mb-2">
+                Güncelleme Türü
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setBulkPriceMode('tl')}
+                  className={`flex-1 py-2 px-3 rounded-sm text-sm font-medium transition-colors ${
+                    bulkPriceMode === 'tl'
+                      ? 'bg-gold-500 text-white'
+                      : 'bg-earth-100 text-earth-600 hover:bg-earth-200'
+                  }`}
+                >
+                  + TL Zam
+                </button>
+                <button
+                  onClick={() => setBulkPriceMode('percent')}
+                  className={`flex-1 py-2 px-3 rounded-sm text-sm font-medium transition-colors ${
+                    bulkPriceMode === 'percent'
+                      ? 'bg-gold-500 text-white'
+                      : 'bg-earth-100 text-earth-600 hover:bg-earth-200'
+                  }`}
+                >
+                  + % Zam
+                </button>
+              </div>
+            </div>
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-earth-700 mb-1">
-                Yeni Fiyat (TL)
+                {bulkPriceMode === 'tl' ? 'Zam Miktarı (TL)' : 'Zam Yüzdesi (%)'}
               </label>
               <input
                 type="number"
@@ -858,19 +891,25 @@ export default function AdminProducts() {
                 onChange={(e) => setBulkPriceValue(e.target.value)}
                 className="input-field"
                 min="0"
-                placeholder="Fiyat girin"
+                placeholder={bulkPriceMode === 'tl' ? 'Örn: 500' : 'Örn: 20'}
               />
+              <p className="text-xs text-earth-400 mt-1">
+                {bulkPriceMode === 'tl'
+                  ? 'Her ürünün fiyatına bu kadar TL eklenecek'
+                  : 'Her ürünün fiyatına bu kadar % eklenecek'}
+              </p>
             </div>
+
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => { setBulkPriceModal(false); setBulkPriceValue(''); }}
+                onClick={() => { setBulkPriceModal(false); setBulkPriceValue(''); setBulkPriceMode('tl'); }}
                 className="px-4 py-2 text-earth-600 hover:text-earth-800"
               >
                 İptal
               </button>
               <button
-                onClick={() => handleBulkUpdate('price', bulkPriceValue)}
-                disabled={!bulkPriceValue || Number(bulkPriceValue) < 0}
+                onClick={() => handleBulkUpdate('price', bulkPriceValue, bulkPriceMode)}
+                disabled={!bulkPriceValue || Number(bulkPriceValue) <= 0}
                 className="px-6 py-2 bg-gold-500 text-white rounded-sm hover:bg-gold-600 transition-colors disabled:opacity-50"
               >
                 Uygula
