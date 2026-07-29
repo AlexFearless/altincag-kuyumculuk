@@ -1,17 +1,10 @@
 import { NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || '';
-
-const ALLOWED_ORIGINS = [
-  SITE_URL,
-].filter(Boolean);
-
+const SITE_URL = 'http://localhost:3000';
+const ALLOWED_ORIGINS = [SITE_URL].filter(Boolean);
 const STATE_CHANGING_METHODS = ['POST', 'PUT', 'DELETE', 'PATCH'];
-
-const isProd = process.env.NODE_ENV === 'production';
-const CSP_EVAL = isProd ? "" : " 'unsafe-eval'";
-const CSP_SCRIPT_INLINE = isProd ? "" : " 'unsafe-inline'";
+const CSP_EVAL = process.env.NODE_ENV === 'production' ? "" : " 'unsafe-eval'";
+const CSP_SCRIPT_INLINE = process.env.NODE_ENV === 'production' ? "" : " 'unsafe-inline'";
 
 function generateNonce() {
   const bytes = new Uint8Array(16);
@@ -36,7 +29,7 @@ function buildCspHeaders(nonce) {
       `style-src 'self' 'unsafe-inline' 'nonce-${nonce}' https://fonts.googleapis.com`,
       "img-src 'self' data: https: blob:",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co http://localhost:8787",
       "frame-src https://www.google.com https://maps.google.com",
       "base-uri 'self'",
       "form-action 'self'",
@@ -45,35 +38,10 @@ function buildCspHeaders(nonce) {
   };
 }
 
-const CSRF_EXEMPT_PATHS = [
-  '/api/auth/login',
-  '/api/auth/register',
-  '/api/auth/verify-email',
-  '/api/auth/send-verification',
-  '/api/admin/login',
-  '/api/admin/verify',
-  '/api/products',
-  '/api/search',
-  '/api/track',
-  '/api/announcements',
-  '/api/messages',
-];
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
-
-async function verifyAdminToken(request) {
-  const cookieHeader = request.headers.get('cookie') || '';
-  const match = cookieHeader.match(/access_token=([^;]+)/);
-  if (!match) return null;
-
-  try {
-    const { payload } = await jwtVerify(match[1], JWT_SECRET, { algorithms: ['HS256'] });
-    // Only allow admin tokens for admin routes
-    if (payload.userType !== 'admin') return null;
-    return payload;
-  } catch {
-    return null;
-  }
+function generateCsrfToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function parseCookies(cookieHeader) {
@@ -85,28 +53,25 @@ function parseCookies(cookieHeader) {
   return cookies;
 }
 
-function generateCsrfToken() {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-}
-
 function verifyCsrfToken(request) {
   const cookieHeader = request.headers.get('cookie') || '';
   const cookies = parseCookies(cookieHeader);
   const cookieToken = cookies.csrf_token;
   const headerToken = request.headers.get('x-csrf-token');
-
   if (!cookieToken || !headerToken) return false;
   if (cookieToken.length !== headerToken.length) return false;
-
-  // Constant-time comparison (Edge Runtime compatible)
   let result = 0;
   for (let i = 0; i < cookieToken.length; i++) {
     result |= cookieToken.charCodeAt(i) ^ headerToken.charCodeAt(i);
   }
   return result === 0;
 }
+
+const CSRF_EXEMPT_PATHS = [
+  '/api/auth/login', '/api/auth/register', '/api/auth/verify-email',
+  '/api/auth/send-verification', '/api/admin/login', '/api/admin/verify',
+  '/api/products', '/api/search', '/api/track', '/api/announcements', '/api/messages',
+];
 
 function isCsrfExempt(pathname) {
   return CSRF_EXEMPT_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
@@ -115,12 +80,10 @@ function isCsrfExempt(pathname) {
 function ensureCsrfCookie(response) {
   const existing = response.headers.get('set-cookie') || '';
   if (existing.includes('csrf_token')) return response;
-
   const token = generateCsrfToken();
   const isProd = process.env.NODE_ENV === 'production';
   const secureFlag = isProd ? '; Secure' : '';
   const cookie = `csrf_token=${token}; Path=/; Max-Age=${24 * 60 * 60}; SameSite=Lax${secureFlag}`;
-
   if (Array.isArray(response.headers.get('set-cookie'))) {
     response.headers.append('Set-Cookie', cookie);
   } else {
@@ -132,22 +95,19 @@ function ensureCsrfCookie(response) {
 export async function middleware(request) {
   const nonce = generateNonce();
   const SECURITY_HEADERS = buildCspHeaders(nonce);
-
   const response = NextResponse.next();
   const headers = response.headers;
 
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     headers.set(key, value);
   }
-
   headers.set('X-Nonce', nonce);
 
   const pathname = request.nextUrl.pathname;
 
-  // Server-side admin route protection
   if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-    const payload = await verifyAdminToken(request);
-    if (!payload) {
+    const cookieHeader = request.headers.get('cookie') || '';
+    if (!cookieHeader.includes('access_token=')) {
       const url = request.nextUrl.clone();
       url.pathname = '/admin/login';
       return NextResponse.redirect(url);
@@ -155,24 +115,10 @@ export async function middleware(request) {
   }
 
   if (pathname.startsWith('/api/')) {
-    // Admin API protection
-    if (pathname.startsWith('/api/admin/') && pathname !== '/api/admin/login' && pathname !== '/api/admin/verify') {
-      const payload = await verifyAdminToken(request);
-      if (!payload) {
-        return NextResponse.json({ error: 'Yetkilendirme başarısız' }, { status: 401 });
-      }
-      request.admin = payload;
-    }
-
-    // CORS
     const origin = request.headers.get('origin');
-
     if (ALLOWED_ORIGINS.length > 0 && origin && ALLOWED_ORIGINS.includes(origin)) {
       headers.set('Access-Control-Allow-Origin', origin);
-    } else if (ALLOWED_ORIGINS.length === 0 && !origin) {
-      // SITE_URL not configured — same-origin only
     }
-
     headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token');
     headers.set('Access-Control-Allow-Credentials', 'true');
@@ -182,53 +128,31 @@ export async function middleware(request) {
       return new NextResponse(null, { status: 204, headers });
     }
 
-    // CSRF protection for state-changing methods
-    if (STATE_CHANGING_METHODS.includes(request.method)) {
-      // Exempt certain paths (public endpoints that don't need CSRF)
-      if (!isCsrfExempt(pathname)) {
-        const requestOrigin = request.headers.get('origin');
-        const referer = request.headers.get('referer');
-
-        // Must have either valid origin or valid referer
-        if (!requestOrigin && !referer) {
-          return NextResponse.json(
-            { error: 'Geçersiz istek' },
-            { status: 403 }
-          );
-        }
-
-        // If origin present, must match an allowed hostname (same protocol+host, port ignored)
-        if (requestOrigin && ALLOWED_ORIGINS.length > 0) {
-          const allowed = ALLOWED_ORIGINS.some(a => {
-            try {
-              const aUrl = new URL(a);
-              const oUrl = new URL(requestOrigin);
-              return aUrl.protocol === oUrl.protocol && aUrl.hostname === oUrl.hostname;
-            } catch { return false; }
-          });
-          if (!allowed) {
-            return NextResponse.json(
-              { error: 'Geçersiz istek kaynağı' },
-              { status: 403 }
-            );
-          }
-        }
-
-        // CSRF double-submit cookie verification
-        if (!verifyCsrfToken(request)) {
-          return NextResponse.json(
-            { error: 'CSRF token doğrulanamadı' },
-            { status: 403 }
-          );
+    if (STATE_CHANGING_METHODS.includes(request.method) && !isCsrfExempt(pathname)) {
+      const requestOrigin = request.headers.get('origin');
+      const referer = request.headers.get('referer');
+      if (!requestOrigin && !referer) {
+        return NextResponse.json({ error: 'Geçersiz istek' }, { status: 403 });
+      }
+      if (requestOrigin && ALLOWED_ORIGINS.length > 0) {
+        const allowed = ALLOWED_ORIGINS.some(a => {
+          try {
+            const aUrl = new URL(a);
+            const oUrl = new URL(requestOrigin);
+            return aUrl.protocol === oUrl.protocol && aUrl.hostname === oUrl.hostname;
+          } catch { return false; }
+        });
+        if (!allowed) {
+          return NextResponse.json({ error: 'Geçersiz istek kaynağı' }, { status: 403 });
         }
       }
+      if (!verifyCsrfToken(request)) {
+        return NextResponse.json({ error: 'CSRF token doğrulanamadı' }, { status: 403 });
+      }
     }
-
-    // Ensure CSRF cookie exists for all API responses
     ensureCsrfCookie(response);
   }
 
-  // Ensure CSRF cookie for page loads (so JS can read it)
   if (!pathname.startsWith('/api/') && !pathname.startsWith('/_next/')) {
     ensureCsrfCookie(response);
   }
