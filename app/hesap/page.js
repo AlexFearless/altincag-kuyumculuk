@@ -71,7 +71,8 @@ export default function AccountPage() {
       const data = await res.json();
       if (data.success) {
         const updatedUser = { ...user, ...data.user };
-        const encoded = encodeURIComponent(JSON.stringify(updatedUser));
+        const safeUser = { name: updatedUser.name, email: updatedUser.email };
+        const encoded = encodeURIComponent(JSON.stringify(safeUser));
         document.cookie = `user_info=${encoded}; Path=/; Max-Age=86400; SameSite=Lax`;
         setSaveMsg('Profiliniz güncellendi');
       } else {

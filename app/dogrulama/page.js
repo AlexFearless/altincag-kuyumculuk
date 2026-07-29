@@ -89,7 +89,8 @@ function DogrulamaContent() {
         return;
       }
 
-      const encoded = encodeURIComponent(JSON.stringify(data.user));
+      const safeUser = { name: data.user.name, email: data.user.email };
+      const encoded = encodeURIComponent(JSON.stringify(safeUser));
       document.cookie = `user_info=${encoded}; Path=/; Max-Age=86400; SameSite=Lax`;
       setSuccess(true);
 

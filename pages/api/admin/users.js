@@ -132,7 +132,11 @@ export default async function handler(req, res) {
       const { id } = req.query;
       if (!id) return res.status(400).json({ error: 'Kullanıcı ID gerekli' });
       const { data: user } = await db.from('users').select('name, email').eq('id', id).single();
+
+      await db.from('refresh_tokens').delete().eq('user_id', id).eq('user_type', 'user');
+      await db.from('carts').delete().eq('guest_id', `user_${id}`);
       await db.from('users').delete().eq('id', id);
+
       createLog(db, { action: 'Kullanıcı silindi', adminEmail: adminData.email, targetType: 'user', targetId: id, details: { name: user?.name, email: user?.email }, req });
       res.status(200).json({ success: true, message: 'Kullanıcı silindi' });
     } catch {

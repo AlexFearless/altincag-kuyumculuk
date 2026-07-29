@@ -3,7 +3,7 @@ import { jwtVerify } from 'jose';
 import crypto from 'crypto';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-const JWT_SECRET = process.env.JWT_SECRET || 'ecb5a24ab737f1a9ec23b24b3ce5834c2d49ba2aad912c75692ce497b2eb93be1343cfdbf80f1301bcdf203262a4745dbf7ec460a812f01d8b5f70eb15983a22';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const ALLOWED_ORIGINS = [SITE_URL].filter(Boolean);
 
@@ -35,7 +35,7 @@ function buildCspHeaders(nonce) {
       `style-src 'self' 'unsafe-inline' 'nonce-${nonce}' https://fonts.googleapis.com`,
       "img-src 'self' data: https: blob:",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https://*.supabase.co",
+      "connect-src 'self' https://mjyghchbqlwqxorfgkvj.supabase.co wss://mjyghchbqlwqxorfgkvj.supabase.co",
       "frame-src https://www.google.com https://maps.google.com",
       "base-uri 'self'",
       "form-action 'self'",
@@ -143,7 +143,7 @@ export async function middleware(request) {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     headers.set(key, value);
   }
-  headers.set('X-Nonce', nonce);
+  headers.set('X-Content-Security-Policy-Nonce', nonce);
 
   const pathname = request.nextUrl.pathname;
 
