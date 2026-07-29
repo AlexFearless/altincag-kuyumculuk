@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import crypto from 'crypto';
 
-const SITE_URL = 'http://localhost:3000';
-const JWT_SECRET = 'ecb5a24ab737f1a9ec23b24b3ce5834c2d49ba2aad912c75692ce497b2eb93be1343cfdbf80f1301bcdf203262a4745dbf7ec460a812f01d8b5f70eb15983a22';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const JWT_SECRET = process.env.JWT_SECRET || 'ecb5a24ab737f1a9ec23b24b3ce5834c2d49ba2aad912c75692ce497b2eb93be1343cfdbf80f1301bcdf203262a4745dbf7ec460a812f01d8b5f70eb15983a22';
 
 const ALLOWED_ORIGINS = [SITE_URL].filter(Boolean);
 
@@ -102,11 +103,14 @@ function verifyCsrfToken(request) {
   if (!cookieToken || !headerToken) return false;
   if (cookieToken.length !== headerToken.length) return false;
 
-  let result = 0;
-  for (let i = 0; i < cookieToken.length; i++) {
-    result |= cookieToken.charCodeAt(i) ^ headerToken.charCodeAt(i);
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(cookieToken, 'utf8'),
+      Buffer.from(headerToken, 'utf8')
+    );
+  } catch {
+    return false;
   }
-  return result === 0;
 }
 
 function isCsrfExempt(pathname) {

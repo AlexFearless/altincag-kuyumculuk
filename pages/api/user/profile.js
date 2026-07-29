@@ -1,9 +1,9 @@
 import { getDb } from '@/lib/supabase';
-import jwt from 'jsonwebtoken';
 import { sanitize, validateEmail, validatePhone } from '@/lib/sanitize';
 import { getJwtSecret } from '@/lib/secrets';
 import { rateLimit } from '@/lib/rateLimit';
 import { parseCookies, getTokenFromRequest } from '@/lib/cookieUtils';
+import { verifyToken } from '@/lib/auth';
 
 const profileLimiter = rateLimit({ windowMs: 60000, max: 20, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
@@ -13,13 +13,12 @@ export default async function handler(req, res) {
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }
 
-  const JWT_SECRET = getJwtSecret();
-
   if (req.method === 'GET') {
     try {
       const token = getTokenFromRequest(req);
       if (!token) return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded = await verifyToken(token);
+      if (!decoded) return res.status(401).json({ error: 'Geçersiz oturum' });
 
       const { data: user } = await db.from('users').select('id, name, email, phone, address, is_active').eq('id', decoded.id).single();
       if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
@@ -27,7 +26,6 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ success: true, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address } });
     } catch (error) {
-      if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') return res.status(401).json({ error: 'Geçersiz oturum' });
       return res.status(500).json({ error: 'Doğrulama hatası' });
     }
   }
@@ -37,7 +35,8 @@ export default async function handler(req, res) {
   try {
     const token = getTokenFromRequest(req);
     if (!token) return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = await verifyToken(token);
+    if (!decoded) return res.status(401).json({ error: 'Geçersiz oturum' });
 
     const { name, phone, email, address } = req.body;
     const updateData = {};
@@ -50,9 +49,7 @@ export default async function handler(req, res) {
       updateData.phone = sanitize(String(phone));
     }
     if (email !== undefined) {
-      if (!validateEmail(email)) return res.status(400).json({ error: 'Geçersiz e-posta adresi' });
-      const cleanEmail = String(email).toLowerCase().trim();
-      if (cleanEmail !== decoded.email?.toLowerCase()) return res.status(400).json({ error: 'E-posta değişikliği için müşteri hizmetleri ile iletişime geçin' });
+      return res.status(400).json({ error: 'E-posta değişikliği için müşteri hizmetleri ile iletişime geçin' });
     }
     if (address !== undefined) updateData.address = typeof address === 'object' ? address : sanitize(String(address || ''));
 
@@ -66,7 +63,6 @@ export default async function handler(req, res) {
 
     res.status(200).json({ success: true, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address } });
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') return res.status(401).json({ error: 'Geçersiz oturum' });
     res.status(500).json({ error: 'Profil güncellenirken hata oluştu' });
   }
 }

@@ -356,7 +356,7 @@ export default async function handler(req, res) {
       order: { orderNumber: order.order_number, totalAmount: order.total_amount },
     });
   } catch (error) {
-    console.error(`Order creation error at step "${step}":`, error?.message || error, error?.code || '', error?.details || '', error?.hint || '');
-    res.status(500).json({ error: `Sipariş oluşturulurken hata oluştu (${step})` });
+    console.error(`Order creation error at step "${step}":`, error?.message || error);
+    res.status(500).json({ error: 'Sipariş oluşturulurken bir hata oluştu. Lütfen daha sonra tekrar deneyin.' });
   }
 }

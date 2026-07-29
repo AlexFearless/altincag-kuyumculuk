@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
     let userEmail;
     try {
-      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET, { algorithms: ['HS256'] });
       const { data: user } = await db.from('users').select('email, is_active').eq('id', decoded.id).single();
       if (!user || !user.is_active) return res.status(401).json({ error: 'Hesap bulunamadı veya pasif' });
       userEmail = user.email;

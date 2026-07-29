@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   if (!token) return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     const { data: user } = await db.from('users').select('id, email, name, is_active').eq('id', decoded.id).single();
     if (!user) return res.status(401).json({ error: 'Kullanıcı bulunamadı' });
 

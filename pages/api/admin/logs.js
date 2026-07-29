@@ -10,7 +10,7 @@ const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla 
 async function verifyAdminActive(db, token) {
   try {
     const JWT_SECRET = getJwtSecret();
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     const { data: admin } = await db
       .from('admins')
       .select('id, is_active, role')

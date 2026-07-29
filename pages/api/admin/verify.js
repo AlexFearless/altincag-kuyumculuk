@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, error: 'Yetkilendirme başarısız' });
     }
 
-    if (!admin.role || !['super_admin', 'admin', 'superadmin'].includes(admin.role)) {
+    if (!admin.role || !['super_admin', 'admin'].includes(admin.role)) {
       return res.status(403).json({ success: false, error: 'Yetkilendirme başarısız' });
     }
 

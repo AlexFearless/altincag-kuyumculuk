@@ -30,7 +30,7 @@ export default async function handler(req, res) {
 
       let decoded;
       try {
-        decoded = jwt.verify(tempToken, JWT_SECRET);
+        decoded = jwt.verify(tempToken, JWT_SECRET, { algorithms: ['HS256'] });
       } catch {
         return res.status(401).json({ error: 'Geçersiz veya süresi dolmuş doğrulama kodu' });
       }
@@ -102,7 +102,7 @@ export default async function handler(req, res) {
     }
 
     if (!admin.is_active) {
-      return res.status(403).json({ error: 'Hesabınız devre dışı bırakılmış' });
+      return res.status(401).json({ error: 'Geçersiz e-posta veya şifre' });
     }
 
     const isMatch = await bcrypt.compare(password, admin.password);
@@ -129,7 +129,6 @@ export default async function handler(req, res) {
         success: false,
         requires2FA: true,
         tempToken,
-        admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role },
       });
     }
 

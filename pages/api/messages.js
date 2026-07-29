@@ -11,10 +11,10 @@ async function verifyAdminToken(db, req) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   try {
     const JWT_SECRET = getJwtSecret();
-    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET, { algorithms: ['HS256'] });
     const { data: admin } = await db.from('admins').select('id, name, role, is_active').eq('id', decoded.id).single();
     if (!admin || !admin.is_active) return null;
-    if (!admin.role || !['super_admin', 'admin', 'superadmin'].includes(admin.role)) return null;
+    if (!admin.role || !['super_admin', 'admin'].includes(admin.role)) return null;
     return admin;
   } catch {
     return null;

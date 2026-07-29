@@ -13,7 +13,7 @@ const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla 
 async function verifyAdminActive(db, token) {
   try {
     const JWT_SECRET = getJwtSecret();
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     const { data: admin } = await db
       .from('admins')
       .select('id, is_active, email, role')
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
   if (!token) return res.status(401).json({ error: 'Yetki gerekli' });
   const adminData = await verifyAdminActive(db, token);
   if (!adminData) return res.status(401).json({ error: 'Geçersiz veya pasif hesap' });
-  if (!adminData.role || !['super_admin', 'admin', 'superadmin'].includes(adminData.role)) {
+  if (!adminData.role || !['super_admin', 'admin'].includes(adminData.role)) {
     return res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
   }
 

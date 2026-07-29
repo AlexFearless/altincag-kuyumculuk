@@ -32,6 +32,7 @@ async function handler(req, res) {
         .from('orders')
         .select('*')
         .eq('id', orderId)
+        .eq('user_id', req.user.id)
         .single();
 
       if (!order) {
