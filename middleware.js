@@ -54,18 +54,7 @@ const CSRF_EXEMPT_PATHS = [
   '/api/track',
   '/api/announcements',
   '/api/messages',
-  '/api/setup',
-  '/api/setup-status',
 ];
-
-const SETUP_PATHS = ['/setup', '/api/setup', '/api/setup-status'];
-
-function isSetupComplete() {
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return true;
-  }
-  return false;
-}
 
 function getJwtSecret() {
   if (process.env.JWT_SECRET) {
@@ -155,19 +144,6 @@ export async function middleware(request) {
   headers.set('X-Nonce', nonce);
 
   const pathname = request.nextUrl.pathname;
-  const setupDone = isSetupComplete();
-
-  if (!setupDone && !SETUP_PATHS.includes(pathname) && !pathname.startsWith('/_next') && !pathname.startsWith('/favicon') && !pathname.endsWith('.png') && !pathname.endsWith('.jpg') && !pathname.endsWith('.jpeg') && !pathname.endsWith('.svg') && !pathname.endsWith('.css') && !pathname.endsWith('.js')) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/setup';
-    return NextResponse.redirect(url);
-  }
-
-  if (setupDone && pathname === '/setup') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/';
-    return NextResponse.redirect(url);
-  }
 
   if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
     const payload = await verifyAdminToken(request);
