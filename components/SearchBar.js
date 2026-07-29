@@ -124,6 +124,9 @@ export default function SearchBar({ isAdmin = false }) {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-earth-800 truncate">{product.name}</p>
+                  {isAdmin && product.barcode && (
+                    <p className="text-xs text-earth-400">{product.barcode}</p>
+                  )}
                   <div className="flex items-center space-x-2">
                     {product.discountedPrice > 0 ? (
                       <>

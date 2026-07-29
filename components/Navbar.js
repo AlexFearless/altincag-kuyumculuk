@@ -113,7 +113,7 @@ export default function Navbar() {
         <div className="px-4 lg:px-6 pb-3">
           <div className="flex items-center gap-2">
             <div className="flex-1">
-              <SearchBar />
+              <SearchBar isAdmin={pathname.startsWith('/admin')} />
             </div>
             <a href="tel:+902122322212" className="p-2.5 bg-earth-50 rounded-full text-earth-500 hover:text-gold-600 hover:bg-gold-50 transition-colors flex-shrink-0">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
