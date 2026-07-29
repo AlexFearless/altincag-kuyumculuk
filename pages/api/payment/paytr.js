@@ -2,12 +2,12 @@ import crypto from 'crypto';
 import { withAuth } from '@/lib/auth';
 import { getClientIp } from '@/lib/getClientIp';
 
+const PAYTR_MERCHANT_ID = '';
+const PAYTR_MERCHANT_KEY = '';
+const PAYTR_MERCHANT_SALT = '';
+
 async function handler(req, res) {
   try {
-    const PAYTR_MERCHANT_ID = process.env.PAYTR_MERCHANT_ID || '';
-    const PAYTR_MERCHANT_KEY = process.env.PAYTR_MERCHANT_KEY || '';
-    const PAYTR_MERCHANT_SALT = process.env.PAYTR_MERCHANT_SALT || '';
-
     const { merchantOid, email, paymentAmount, userBasket, noInstallment, maxInstallment, currency, testMode } = req.body;
     const userIp = getClientIp(req);
 
