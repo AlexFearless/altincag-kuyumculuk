@@ -1,6 +1,7 @@
 node_modules/
 .next/
 .env.local
+config.json
 .vs/
 *.log
 .DS_Store

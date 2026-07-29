@@ -4,17 +4,17 @@ import { rateLimit } from '@/lib/rateLimit';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '@/lib/secrets';
 
-const JWT_SECRET = getJwtSecret();
 const msgLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla mesaj. 1 dakika bekleyin.' });
 
 async function verifyAdminToken(db, req) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   try {
+    const JWT_SECRET = getJwtSecret();
     const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
     const { data: admin } = await db.from('admins').select('id, name, role, is_active').eq('id', decoded.id).single();
     if (!admin || !admin.is_active) return null;
-    if (!admin.role || !['super_admin', 'admin'].includes(admin.role)) return null;
+    if (!admin.role || !['super_admin', 'admin', 'superadmin'].includes(admin.role)) return null;
     return admin;
   } catch {
     return null;
@@ -23,24 +23,16 @@ async function verifyAdminToken(db, req) {
 
 function mapMessage(m) {
   return {
-    _id: m.id,
-    id: m.id,
-    name: m.name,
-    email: m.email,
-    phone: m.phone,
-    subject: m.subject,
-    message: m.message,
-    isRead: m.is_read,
-    status: m.status || 'open',
-    replies: m.message_replies || [],
-    createdAt: m.created_at,
-    updatedAt: m.updated_at,
+    _id: m.id, id: m.id, name: m.name, email: m.email, phone: m.phone,
+    subject: m.subject, message: m.message, isRead: m.is_read,
+    status: m.status || 'open', replies: m.message_replies || [],
+    createdAt: m.created_at, updatedAt: m.updated_at,
   };
 }
 
 export default async function handler(req, res) {
   let db;
-  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }
 
   switch (req.method) {
     case 'POST':
@@ -68,35 +60,20 @@ export default async function handler(req, res) {
 async function handlePost(db, req, res) {
   try {
     const { name, email, phone, subject, message } = req.body;
-    if (!name || !email || !subject || !message) {
-      return res.status(400).json({ error: 'Zorunlu alanları doldurun' });
-    }
-    if (typeof name !== 'string' || name.trim().length < 2 || name.length > 100) {
-      return res.status(400).json({ error: 'Geçersiz isim' });
-    }
-    if (!validateEmail(email)) {
-      return res.status(400).json({ error: 'Geçersiz e-posta' });
-    }
-    if (typeof message !== 'string' || message.length > 5000) {
-      return res.status(400).json({ error: 'Mesaj 5000 karakterden uzun olamaz' });
-    }
-    if (typeof subject !== 'string' || subject.length > 200) {
-      return res.status(400).json({ error: 'Geçersiz konu' });
-    }
+    if (!name || !email || !subject || !message) return res.status(400).json({ error: 'Zorunlu alanları doldurun' });
+    if (typeof name !== 'string' || name.trim().length < 2 || name.length > 100) return res.status(400).json({ error: 'Geçersiz isim' });
+    if (!validateEmail(email)) return res.status(400).json({ error: 'Geçersiz e-posta' });
+    if (typeof message !== 'string' || message.length > 5000) return res.status(400).json({ error: 'Mesaj 5000 karakterden uzun olamaz' });
+    if (typeof subject !== 'string' || subject.length > 200) return res.status(400).json({ error: 'Geçersiz konu' });
 
     const { error } = await db.from('messages').insert({
-      name: sanitize(name.trim()),
-      email: String(email).toLowerCase().trim(),
-      phone: sanitize(String(phone || '')),
-      subject: sanitize(String(subject)),
-      message: sanitize(String(message).trim()),
-      status: 'open',
+      name: sanitize(name.trim()), email: String(email).toLowerCase().trim(),
+      phone: sanitize(String(phone || '')), subject: sanitize(String(subject)),
+      message: sanitize(String(message).trim()), status: 'open',
     });
-
     if (error) throw error;
     res.status(201).json({ success: true, message: 'Mesajınız başarıyla gönderildi' });
-  } catch (error) {
-    console.error('Message POST error:', error);
+  } catch {
     res.status(500).json({ error: 'Mesaj gönderilemedi' });
   }
 }
@@ -104,20 +81,13 @@ async function handlePost(db, req, res) {
 async function handleGet(db, req, res) {
   try {
     const { unread, email, category } = req.query;
-    let query = db
-      .from('messages')
-      .select('*, message_replies(*)', { count: 'exact' });
-
+    let query = db.from('messages').select('*, message_replies(*)', { count: 'exact' });
     if (unread === 'true') query = query.eq('is_read', false);
     if (email) query = query.eq('email', String(email).toLowerCase().trim());
     if (category && category !== 'all') query = query.eq('subject', category);
 
     const { data: messages } = await query.order('created_at', { ascending: false });
-
-    const { count: unreadCount } = await db
-      .from('messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_read', false);
+    const { count: unreadCount } = await db.from('messages').select('*', { count: 'exact', head: true }).eq('is_read', false);
 
     const fixed = (messages || []).map(m => {
       if (!m.message_replies) m.message_replies = [];
@@ -126,8 +96,7 @@ async function handleGet(db, req, res) {
     });
 
     res.status(200).json({ messages: fixed, unreadCount: unreadCount || 0 });
-  } catch (error) {
-    console.error('Messages GET error:', error);
+  } catch {
     res.status(500).json({ error: 'Mesajlar yüklenemedi' });
   }
 }
@@ -151,23 +120,15 @@ async function handlePut(db, req, res, admin) {
     if (reply !== undefined && String(reply).trim()) {
       if (String(reply).length > 5000) return res.status(400).json({ error: 'Yanıt çok uzun' });
       await db.from('message_replies').insert({
-        message_id: id,
-        sender: 'admin',
-        sender_name: sanitize(admin.name || 'Admin'),
+        message_id: id, sender: 'admin', sender_name: sanitize(admin.name || 'Admin'),
         text: sanitize(String(reply).trim()),
       });
       await db.from('messages').update({ status: 'answered' }).eq('id', id);
     }
 
-    const { data: updatedMessage } = await db
-      .from('messages')
-      .select('*, message_replies(*)')
-      .eq('id', id)
-      .single();
-
+    const { data: updatedMessage } = await db.from('messages').select('*, message_replies(*)').eq('id', id).single();
     res.status(200).json({ success: true, message: mapMessage(updatedMessage) });
-  } catch (error) {
-    console.error('Message PUT error:', error);
+  } catch {
     res.status(500).json({ error: 'Mesaj güncellenemedi' });
   }
 }
@@ -179,8 +140,7 @@ async function handleDelete(db, req, res) {
     await db.from('message_replies').delete().eq('message_id', id);
     await db.from('messages').delete().eq('id', id);
     res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Message DELETE error:', error);
+  } catch {
     res.status(500).json({ error: 'Mesaj silinemedi' });
   }
 }

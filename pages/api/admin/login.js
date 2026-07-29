@@ -7,9 +7,6 @@ import { setTokenCookies } from '@/lib/cookies';
 import { verifyTOTP } from '@/lib/totp';
 import { getJwtSecret } from '@/lib/secrets';
 
-const JWT_SECRET = getJwtSecret();
-const TEMP_TOKEN_EXPIRY = '5m';
-
 const loginLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla deneme. 1 dakika bekleyin.' });
 
 export default async function handler(req, res) {
@@ -19,13 +16,13 @@ export default async function handler(req, res) {
 
   if (!(await loginLimiter(req, res))) return;
 
+  let db;
+  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+
   try {
-    let db;
-    try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
-
     const { email, password, tempToken, totpCode } = req.body;
+    const JWT_SECRET = getJwtSecret();
 
-    // 2FA verification flow
     if (tempToken && totpCode) {
       if (typeof tempToken !== 'string' || typeof totpCode !== 'string') {
         return res.status(400).json({ error: 'Geçersiz istek parametreleri' });
@@ -68,15 +65,13 @@ export default async function handler(req, res) {
         id: admin.id, email: admin.email, name: admin.name, role: admin.role,
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         expiresIn,
         admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role },
       });
-      return;
     }
 
-    // Password login flow
     if (!email || !password) {
       return res.status(400).json({ error: 'E-posta ve şifre zorunludur' });
     }
@@ -128,7 +123,7 @@ export default async function handler(req, res) {
       const tempToken = jwt.sign(
         { adminId: admin.id, purpose: '2fa' },
         JWT_SECRET,
-        { expiresIn: TEMP_TOKEN_EXPIRY, algorithm: 'HS256' }
+        { expiresIn: '5m', algorithm: 'HS256' }
       );
       return res.status(200).json({
         success: false,
@@ -152,7 +147,6 @@ export default async function handler(req, res) {
       admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role },
     });
   } catch (error) {
-    console.error('Admin login error:', error);
     res.status(500).json({ error: 'Sunucu hatası oluştu' });
   }
 }

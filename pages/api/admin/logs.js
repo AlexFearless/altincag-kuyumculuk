@@ -5,11 +5,11 @@ import { rateLimit } from '@/lib/rateLimit';
 import { parseCookies, getTokenFromRequest } from '@/lib/cookieUtils';
 import { getClientIp } from '@/lib/getClientIp';
 
-const JWT_SECRET = getJwtSecret();
 const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
 async function verifyAdminActive(db, token) {
   try {
+    const JWT_SECRET = getJwtSecret();
     const decoded = jwt.verify(token, JWT_SECRET);
     const { data: admin } = await db
       .from('admins')
@@ -34,16 +34,14 @@ export async function createLog(db, { action, adminEmail, targetType, targetId, 
       details: details || {},
       ip,
     });
-  } catch (e) {
-    console.error('Log creation error:', e);
-  }
+  } catch {}
 }
 
 export default async function handler(req, res) {
   if (!(await adminLimiter(req, res))) return;
 
   let db;
-  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.' }); }
+  try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }
 
   const token = getTokenFromRequest(req);
   if (!token) {
@@ -52,7 +50,7 @@ export default async function handler(req, res) {
   const adminResult = await verifyAdminActive(db, token);
   if (!adminResult) return res.status(401).json({ error: 'Geçersiz veya pasif hesap' });
 
-  if (!adminResult.role || !['super_admin', 'admin'].includes(adminResult.role)) {
+  if (!adminResult.role || !['super_admin', 'admin', 'superadmin'].includes(adminResult.role)) {
     return res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
   }
 
@@ -71,8 +69,7 @@ export default async function handler(req, res) {
 
       const total = count || 0;
       res.status(200).json({ logs: logs || [], total, page: parseInt(page), pages: Math.ceil(total / safeLimit) });
-    } catch (error) {
-      console.error('Logs error:', error);
+    } catch {
       res.status(500).json({ error: 'Loglar yüklenemedi' });
     }
   } else {
