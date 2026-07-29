@@ -12,35 +12,47 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
   const [added, setAdded] = useState(false);
   const { addToCart } = useCart();
 
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const zoomRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
+  const [renderKey, setRenderKey] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [lastPinchDist, setLastPinchDist] = useState(null);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const lastPinchDist = useRef(null);
   const imageContainerRef = useRef(null);
 
   const MIN_ZOOM = 1;
   const MAX_ZOOM = 4;
+
+  const forceRender = () => setRenderKey(k => k + 1);
+
+  const applyZoom = useCallback((newZoom, focusX, focusY) => {
+    const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoom));
+    const oldZ = zoomRef.current;
+    if (z === oldZ) return;
+    if (z === 1) {
+      zoomRef.current = 1;
+      panRef.current = { x: 0, y: 0 };
+    } else {
+      const ratio = z / oldZ;
+      panRef.current = {
+        x: focusX - ratio * (focusX - panRef.current.x),
+        y: focusY - ratio * (focusY - panRef.current.y),
+      };
+      zoomRef.current = z;
+    }
+    forceRender();
+  }, []);
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
     const container = imageContainerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    const cursorX = e.clientX - rect.left - rect.width / 2;
-    const cursorY = e.clientY - rect.top - rect.height / 2;
-    const delta = e.deltaY * -0.003;
-    setZoom(prev => {
-      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev + delta));
-      if (next === 1) { setPan({ x: 0, y: 0 }); return next; }
-      const ratio = next / prev;
-      setPan(p => ({
-        x: cursorX - ratio * (cursorX - p.x),
-        y: cursorY - ratio * (cursorY - p.y),
-      }));
-      return next;
-    });
-  }, []);
+    const focusX = e.clientX - rect.left - rect.width / 2;
+    const focusY = e.clientY - rect.top - rect.height / 2;
+    const delta = -e.deltaY * 0.005;
+    applyZoom(zoomRef.current + delta, focusX, focusY);
+  }, [applyZoom]);
 
   const handleTouchStart = useCallback((e) => {
     if (e.touches.length === 2) {
@@ -48,73 +60,80 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      setLastPinchDist(dist);
-    } else if (e.touches.length === 1 && zoom > 1) {
+      lastPinchDist.current = dist;
+    } else if (e.touches.length === 1 && zoomRef.current > 1) {
       setIsDragging(true);
-      setDragStart({
-        x: e.touches[0].clientX - pan.x,
-        y: e.touches[0].clientY - pan.y
-      });
+      dragStartRef.current = {
+        x: e.touches[0].clientX - panRef.current.x,
+        y: e.touches[0].clientY - panRef.current.y
+      };
     }
-  }, [zoom, pan]);
+  }, []);
 
   const handleTouchMove = useCallback((e) => {
-    if (e.touches.length === 2 && lastPinchDist !== null) {
+    if (e.touches.length === 2 && lastPinchDist.current !== null) {
       e.preventDefault();
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      const scale = dist / lastPinchDist;
-      setZoom(prev => {
-        const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev * scale));
-        if (next === 1) setPan({ x: 0, y: 0 });
-        return next;
-      });
-      setLastPinchDist(dist);
-    } else if (e.touches.length === 1 && isDragging && zoom > 1) {
+      const container = imageContainerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left - rect.width / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top - rect.height / 2;
+      const scale = dist / lastPinchDist.current;
+      applyZoom(zoomRef.current * scale, midX, midY);
+      lastPinchDist.current = dist;
+    } else if (e.touches.length === 1 && isDragging && zoomRef.current > 1) {
       e.preventDefault();
-      setPan({
-        x: e.touches[0].clientX - dragStart.x,
-        y: e.touches[0].clientY - dragStart.y
-      });
+      panRef.current = {
+        x: e.touches[0].clientX - dragStartRef.current.x,
+        y: e.touches[0].clientY - dragStartRef.current.y
+      };
+      forceRender();
     }
-  }, [lastPinchDist, isDragging, zoom, dragStart]);
+  }, [isDragging, applyZoom]);
 
   const handleTouchEnd = useCallback(() => {
-    setLastPinchDist(null);
+    lastPinchDist.current = null;
     setIsDragging(false);
   }, []);
 
   const handleMouseDown = useCallback((e) => {
-    if (zoom > 1) {
+    if (zoomRef.current > 1) {
       e.preventDefault();
       setIsDragging(true);
-      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      dragStartRef.current = { x: e.clientX - panRef.current.x, y: e.clientY - panRef.current.y };
     }
-  }, [zoom, pan]);
+  }, []);
 
   const handleMouseMove = useCallback((e) => {
-    if (isDragging && zoom > 1) {
-      setPan({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
+    if (isDragging && zoomRef.current > 1) {
+      panRef.current = {
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y
+      };
+      forceRender();
     }
-  }, [isDragging, zoom, dragStart]);
+  }, [isDragging]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
   }, []);
 
-  const handleDoubleClick = useCallback(() => {
-    if (zoom > 1) {
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
+  const handleDoubleClick = useCallback((e) => {
+    const container = imageContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const focusX = e.clientX - rect.left - rect.width / 2;
+    const focusY = e.clientY - rect.top - rect.height / 2;
+    if (zoomRef.current > 1) {
+      applyZoom(1, 0, 0);
     } else {
-      setZoom(2.5);
+      applyZoom(2.5, focusX, focusY);
     }
-  }, [zoom]);
+  }, [applyZoom]);
 
   useEffect(() => {
     const el = imageContainerRef.current;
@@ -124,13 +143,13 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
   }, [handleWheel]);
 
   useEffect(() => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    zoomRef.current = 1;
+    panRef.current = { x: 0, y: 0 };
+    forceRender();
   }, [selectedImage]);
 
   const resetZoom = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    applyZoom(1, 0, 0);
   };
 
   const handleAddToCart = async () => {
@@ -184,7 +203,7 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
             <div
               ref={imageContainerRef}
               className="aspect-square bg-white rounded-lg overflow-hidden relative select-none"
-              style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in', touchAction: 'none' }}
+              style={{ cursor: zoomRef.current > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in', touchAction: 'none' }}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -200,8 +219,8 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
                   alt={product.name}
                   className="w-full h-full object-cover"
                   style={{
-                    transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
-                    transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+                    transform: `scale(${zoomRef.current}) translate(${panRef.current.x / zoomRef.current}px, ${panRef.current.y / zoomRef.current}px)`,
+                    transition: isDragging ? 'none' : 'transform 0.15s ease-out',
                   }}
                   draggable={false}
                 />
@@ -214,7 +233,7 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
                 </div>
               )}
 
-              {zoom > 1 && (
+              {zoomRef.current > 1 && (
                 <button
                   onClick={resetZoom}
                   className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full hover:bg-black/80 transition-colors z-10"
@@ -225,9 +244,9 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
                 </button>
               )}
 
-              {zoom > 1 && (
+              {zoomRef.current > 1 && (
                 <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full z-10">
-                  %{Math.round(zoom * 100)}
+                  %{Math.round(zoomRef.current * 100)}
                 </div>
               )}
             </div>
@@ -425,7 +444,7 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
                   const el = document.getElementById('related-scroll');
                   if (el) el.scrollBy({ left: -300, behavior: 'smooth' });
                 }}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 bg-red-500 shadow-lg rounded-full w-12 h-12 flex items-center justify-center text-white hover:bg-red-600 hover:shadow-xl transition-all opacity-0 group-hover:opacity-100 z-10"
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 bg-red-600 shadow-lg rounded-full w-12 h-12 flex items-center justify-center text-white hover:bg-red-700 hover:shadow-xl transition-all z-10"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -436,7 +455,7 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
                   const el = document.getElementById('related-scroll');
                   if (el) el.scrollBy({ left: 300, behavior: 'smooth' });
                 }}
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 bg-red-500 shadow-lg rounded-full w-12 h-12 flex items-center justify-center text-white hover:bg-red-600 hover:shadow-xl transition-all opacity-0 group-hover:opacity-100 z-10"
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 bg-red-600 shadow-lg rounded-full w-12 h-12 flex items-center justify-center text-white hover:bg-red-700 hover:shadow-xl transition-all z-10"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
