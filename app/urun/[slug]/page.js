@@ -7,6 +7,7 @@ import ProductDetail from '@/components/ProductDetail';
 export default function ProductPage() {
   const params = useParams();
   const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -16,12 +17,22 @@ export default function ProductPage() {
 
   const fetchProduct = async () => {
     try {
+      setLoading(true);
       const res = await fetch(`/api/products/${params.slug}`);
       if (!res.ok) {
         throw new Error('Ürün bulunamadı');
       }
       const data = await res.json();
       setProduct(data.product);
+
+      if (data.product?.category) {
+        const catRes = await fetch(`/api/products?category=${data.product.category}&limit=10`);
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          const filtered = catData.products.filter(p => p._id !== data.product._id);
+          setRelatedProducts(filtered);
+        }
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -48,5 +59,5 @@ export default function ProductPage() {
     );
   }
 
-  return <ProductDetail product={product} />;
+  return <ProductDetail product={product} relatedProducts={relatedProducts} />;
 }

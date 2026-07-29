@@ -1,20 +1,132 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
+import ProductCard from './ProductCard';
 
-export default function ProductDetail({ product }) {
+export default function ProductDetail({ product, relatedProducts = [] }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const { addToCart } = useCart();
 
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [lastPinchDist, setLastPinchDist] = useState(null);
+  const imageContainerRef = useRef(null);
+
+  const MIN_ZOOM = 1;
+  const MAX_ZOOM = 4;
+
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    const delta = e.deltaY * -0.002;
+    setZoom(prev => {
+      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev + delta));
+      if (next === 1) setPan({ x: 0, y: 0 });
+      return next;
+    });
+  }, []);
+
+  const handleTouchStart = useCallback((e) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      setLastPinchDist(dist);
+    } else if (e.touches.length === 1 && zoom > 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - pan.x,
+        y: e.touches[0].clientY - pan.y
+      });
+    }
+  }, [zoom, pan]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length === 2 && lastPinchDist !== null) {
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const scale = dist / lastPinchDist;
+      setZoom(prev => {
+        const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev * scale));
+        if (next === 1) setPan({ x: 0, y: 0 });
+        return next;
+      });
+      setLastPinchDist(dist);
+    } else if (e.touches.length === 1 && isDragging && zoom > 1) {
+      e.preventDefault();
+      setPan({
+        x: e.touches[0].clientX - dragStart.x,
+        y: e.touches[0].clientY - dragStart.y
+      });
+    }
+  }, [lastPinchDist, isDragging, zoom, dragStart]);
+
+  const handleTouchEnd = useCallback(() => {
+    setLastPinchDist(null);
+    setIsDragging(false);
+  }, []);
+
+  const handleMouseDown = useCallback((e) => {
+    if (zoom > 1) {
+      e.preventDefault();
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
+  }, [zoom, pan]);
+
+  const handleMouseMove = useCallback((e) => {
+    if (isDragging && zoom > 1) {
+      setPan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  }, [isDragging, zoom, dragStart]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleDoubleClick = useCallback(() => {
+    if (zoom > 1) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    } else {
+      setZoom(2.5);
+    }
+  }, [zoom]);
+
+  useEffect(() => {
+    const el = imageContainerRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
+
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, [selectedImage]);
+
+  const resetZoom = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
   const handleAddToCart = async () => {
     setIsAdding(true);
     const success = await addToCart(product._id, quantity);
     setIsAdding(false);
-
     if (success) {
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
@@ -24,7 +136,6 @@ export default function ProductDetail({ product }) {
   const isRealDiscount = product.discountType === 'real' && product.discountPercent > 0 && product.discountedPrice > 0;
   const isFakeDiscount = product.discountType === 'fake' && product.discountPercent > 0;
   const isCampaignDiscount = product.campaignDiscount > 0;
-  const hasDiscount = isRealDiscount || isFakeDiscount || isCampaignDiscount;
 
   const displayPrice = isCampaignDiscount
     ? product.discountedPrice
@@ -44,16 +155,45 @@ export default function ProductDetail({ product }) {
   };
 
   return (
-    <div className="min-h-screen bg-cream-50 py-8 lg:py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-cream-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
+        <div className="mb-4">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-earth-600 hover:text-gold-600 transition-colors text-sm font-medium"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            Ana Sayfa
+          </Link>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           <div className="space-y-4">
-            <div className="aspect-square bg-white rounded-lg overflow-hidden">
+            <div
+              ref={imageContainerRef}
+              className="aspect-square bg-white rounded-lg overflow-hidden relative select-none"
+              style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in', touchAction: 'none' }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onDoubleClick={handleDoubleClick}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               {product.images && product.images[selectedImage] ? (
                 <img
                   src={product.images[selectedImage]}
                   alt={product.name}
                   className="w-full h-full object-cover"
+                  style={{
+                    transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+                    transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+                  }}
+                  draggable={false}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-earth-50">
@@ -63,6 +203,30 @@ export default function ProductDetail({ product }) {
                   </div>
                 </div>
               )}
+
+              {zoom > 1 && (
+                <button
+                  onClick={resetZoom}
+                  className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full hover:bg-black/80 transition-colors z-10"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                  </svg>
+                </button>
+              )}
+
+              {zoom > 1 && (
+                <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full z-10">
+                  %{Math.round(zoom * 100)}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-earth-400">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <span>Tekerlekle yakınlaştır • Çift tıkla ile sabitle</span>
             </div>
 
             {product.images && product.images.length > 1 && (
@@ -70,7 +234,7 @@ export default function ProductDetail({ product }) {
                 {product.images.map((image, index) => (
                   <button
                     key={index}
-                    onClick={() => setSelectedImage(index)}
+                    onClick={() => { setSelectedImage(index); resetZoom(); }}
                     className={`flex-shrink-0 w-20 h-20 rounded-sm overflow-hidden border-2 transition-colors ${
                       selectedImage === index
                         ? 'border-gold-500'
@@ -224,7 +388,6 @@ export default function ProductDetail({ product }) {
             </div>
 
             <div className="border-t border-earth-200 pt-6 space-y-3">
-
               <div className="flex items-center space-x-3 text-sm text-earth-600">
                 <ShieldIcon className="w-5 h-5 text-gold-500" />
                 <span>14 gün içinde koşulsuz iade</span>
@@ -236,6 +399,49 @@ export default function ProductDetail({ product }) {
             </div>
           </div>
         </div>
+
+        {relatedProducts.length > 0 && (
+          <div className="mt-16">
+            <h2 className="font-serif text-xl lg:text-2xl font-bold text-earth-800 mb-6">
+              Benzer Ürünler
+            </h2>
+            <div className="relative group">
+              <div
+                id="related-scroll"
+                className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 snap-x snap-mandatory"
+              >
+                {relatedProducts.map((p) => (
+                  <div key={p._id} className="flex-shrink-0 w-[260px] snap-start">
+                    <ProductCard product={p} />
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => {
+                  const el = document.getElementById('related-scroll');
+                  if (el) el.scrollBy({ left: -300, behavior: 'smooth' });
+                }}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 bg-white shadow-lg rounded-full w-10 h-10 flex items-center justify-center text-earth-600 hover:text-gold-600 hover:shadow-xl transition-all opacity-0 group-hover:opacity-100 z-10"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+              </button>
+              <button
+                onClick={() => {
+                  const el = document.getElementById('related-scroll');
+                  if (el) el.scrollBy({ left: 300, behavior: 'smooth' });
+                }}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 bg-white shadow-lg rounded-full w-10 h-10 flex items-center justify-center text-earth-600 hover:text-gold-600 hover:shadow-xl transition-all opacity-0 group-hover:opacity-100 z-10"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -257,14 +463,6 @@ function SunIcon({ className }) {
           transform={`rotate(${angle} 20 20)`}
         />
       ))}
-    </svg>
-  );
-}
-
-function TruckIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H18.75m-7.5-2.25h7.5m-7.5 0H9m7.5 0v-3.375c0-.621-.504-1.125-1.125-1.125H9.75v3.375c0 .621.504 1.125 1.125 1.125z" />
     </svg>
   );
 }
