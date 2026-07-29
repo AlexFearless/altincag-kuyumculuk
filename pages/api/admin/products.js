@@ -33,7 +33,7 @@ async function handleGet(db, req, res) {
     if (category) query = query.eq('category', category);
     if (search) {
       const escapedSearch = sanitizeForOrFilter(search);
-      query = query.or(`name.ilike.%${escapedSearch}%,description.ilike.%${escapedSearch}%`);
+      query = query.or(`name.ilike.%${escapedSearch}%,description.ilike.%${escapedSearch}%,barcode.ilike.%${escapedSearch}%`);
     }
 
     const { data: products, count } = await query
@@ -46,6 +46,7 @@ async function handleGet(db, req, res) {
       id: p.id,
       name: p.name,
       slug: p.slug,
+      barcode: p.barcode || '',
       description: p.description,
       price: p.price,
       cost_price: p.cost_price || 0,
@@ -73,7 +74,7 @@ async function handleGet(db, req, res) {
 
 async function handlePost(db, req, res) {
   try {
-    const { name, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType } = req.body;
+    const { name, barcode, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType } = req.body;
     if (!name || !price || !category) {
       return res.status(400).json({ error: 'Ürün adı, fiyat ve kategori zorunludur' });
     }
@@ -108,6 +109,7 @@ async function handlePost(db, req, res) {
       .from('products')
       .insert({
         name: sanitize(name.trim()),
+        barcode: sanitize(barcode || ''),
         description: sanitize(description || ''),
         price: finalPrice,
         cost_price: Number(costPrice) || 0,
@@ -137,7 +139,7 @@ async function handlePost(db, req, res) {
 
 async function handlePut(db, req, res) {
   try {
-    const { id, name, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType, isActive, bulkUpdate, productIds, field, value } = req.body;
+    const { id, name, barcode, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType, isActive, bulkUpdate, productIds, field, value } = req.body;
 
     if (bulkUpdate && productIds && productIds.length > 0) {
       if (!field || (field !== 'price' && field !== 'stock')) {
@@ -166,6 +168,7 @@ async function handlePut(db, req, res) {
 
     const updateData = {};
     if (name !== undefined) { if (typeof name !== 'string' || name.length > 200) return res.status(400).json({ error: 'Geçersiz ürün adı' }); updateData.name = sanitize(name.trim()); }
+    if (barcode !== undefined) updateData.barcode = sanitize(String(barcode));
     if (description !== undefined) updateData.description = sanitize(String(description));
     if (price !== undefined) { if (isNaN(Number(price)) || Number(price) < 0) return res.status(400).json({ error: 'Geçersiz fiyat' }); updateData.price = Number(price); }
     if (costPrice !== undefined) updateData.cost_price = Number(costPrice) || 0;

@@ -30,9 +30,9 @@ export default async function handler(req, res) {
 
     const { data: products } = await db
       .from('products')
-      .select('name, slug, price, discounted_price, images, category, discount_percent, discount_type')
+      .select('name, slug, barcode, price, discounted_price, images, category, discount_percent, discount_type')
       .eq('is_active', true)
-      .or(`name.ilike.%${safe}%,description.ilike.%${safe}%,category.ilike.%${safe}%,material.ilike.%${safe}%`)
+      .or(`name.ilike.%${safe}%,description.ilike.%${safe}%,category.ilike.%${safe}%,material.ilike.%${safe}%,barcode.ilike.%${safe}%`)
       .limit(Math.min(parseInt(limit) || 10, 50));
 
     const mapped = (products || []).map(p => ({

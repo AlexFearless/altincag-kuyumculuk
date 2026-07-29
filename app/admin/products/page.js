@@ -33,6 +33,7 @@ export default function AdminProducts() {
 
   const [formData, setFormData] = useState({
     name: '',
+    barcode: '',
     description: '',
     price: '',
     costPrice: '',
@@ -141,6 +142,7 @@ export default function AdminProducts() {
     setEditingProduct(product);
     setFormData({
       name: product.name,
+      barcode: product.barcode || '',
       description: product.description || '',
       price: product.price,
       costPrice: product.cost_price || '',
@@ -244,6 +246,7 @@ export default function AdminProducts() {
   const resetForm = () => {
     setFormData({
       name: '',
+      barcode: '',
       description: '',
       price: '',
       costPrice: '',
@@ -455,6 +458,9 @@ export default function AdminProducts() {
                         <span className="text-sm font-medium text-earth-800 line-clamp-1">
                           {product.name}
                         </span>
+                        {product.barcode && (
+                          <span className="text-xs text-earth-400 ml-1">• {product.barcode}</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-earth-500">
@@ -549,20 +555,21 @@ export default function AdminProducts() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-earth-700 mb-1">
-                  Açıklama
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="input-field resize-none h-24"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">
+                    Barkod
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.barcode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, barcode: e.target.value })
+                    }
+                    className="input-field"
+                    placeholder="Örn: KP664"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     Satış Fiyatı (TL) *
@@ -578,6 +585,23 @@ export default function AdminProducts() {
                     min="0"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-earth-700 mb-1">
+                  Açıklama
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  className="input-field resize-none h-24"
+                  placeholder="Ürün açıklaması"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     Maliyet (TL)
@@ -593,9 +617,6 @@ export default function AdminProducts() {
                     placeholder="Kaça alındı"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     Stok

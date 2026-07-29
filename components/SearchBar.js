@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function SearchBar() {
+export default function SearchBar({ isAdmin = false }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -31,7 +31,10 @@ export default function SearchBar() {
 
       setLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=8`);
+        const url = isAdmin
+          ? `/api/admin/products?search=${encodeURIComponent(searchQuery)}&limit=8`
+          : `/api/search?q=${encodeURIComponent(searchQuery)}&limit=8`;
+        const res = await fetch(url, isAdmin ? { credentials: 'include' } : {});
         const data = await res.json();
         setResults(data.products || []);
         setIsOpen(true);
@@ -41,7 +44,7 @@ export default function SearchBar() {
         setLoading(false);
       }
     }, 300),
-    []
+    [isAdmin]
   );
 
   useEffect(() => {
@@ -67,9 +70,12 @@ export default function SearchBar() {
     }
   };
 
-  const handleResultClick = () => {
+  const handleResultClick = (productSlug) => {
     setIsOpen(false);
     setQuery('');
+    if (isAdmin) {
+      router.push('/admin/products');
+    }
   };
 
   return (
@@ -80,7 +86,7 @@ export default function SearchBar() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Site içi ürün arama"
+          placeholder={isAdmin ? "Admin Ürün Araması" : "Site içi ürün arama"}
           autoComplete="off"
           className="w-full pl-10 pr-4 py-2.5 bg-earth-50 border border-earth-200 rounded-full
                      text-sm text-earth-700 placeholder-earth-400
@@ -101,8 +107,8 @@ export default function SearchBar() {
             {results.map((product) => (
               <Link
                 key={product._id}
-                href={`/urun/${product.slug}`}
-                onClick={handleResultClick}
+                href={isAdmin ? '/admin/products' : `/urun/${product.slug}`}
+                onClick={() => handleResultClick(product.slug)}
                 className="flex items-center px-4 py-3 hover:bg-earth-50 transition-colors border-b border-earth-50 last:border-0"
               >
                 {product.images && product.images[0] ? (

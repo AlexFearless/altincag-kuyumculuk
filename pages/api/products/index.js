@@ -34,6 +34,7 @@ export default async function handler(req, res) {
       id: p.id,
       name: p.name,
       slug: p.slug,
+      barcode: p.barcode || '',
       description: p.description,
       price: p.price,
       discountedPrice: p.discounted_price,
