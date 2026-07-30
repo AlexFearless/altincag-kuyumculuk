@@ -28,8 +28,7 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users', { credentials: 'include' });
-      if (res.status === 401) { router.push('/admin/login'); return; }
+      const res = await adminFetch('/api/admin/users');
       const data = await res.json();
       setUsers(data.users || []);
     } catch (error) {
@@ -68,7 +67,7 @@ export default function AdminUsers() {
     setLoadingOrders(true);
     setUserOrders([]);
     try {
-      const res = await fetch(`/api/admin/orders?userId=${user._id}`, { credentials: 'include' });
+      const res = await adminFetch(`/api/admin/orders?userId=${user._id}`);
       const data = await res.json();
       setUserOrders(data.orders || []);
     } catch (error) {

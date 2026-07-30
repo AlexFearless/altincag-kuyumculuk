@@ -20,8 +20,7 @@ export default function AdminAnnouncements() {
 
   async function fetchAnnouncements() {
     try {
-      const res = await fetch('/api/admin/announcements', { credentials: 'include' });
-      if (res.status === 401 || res.status === 403) { fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {}); router.push('/admin/login'); return; }
+      const res = await adminFetch('/api/admin/announcements');
       const data = await res.json();
       setAnnouncements(data.announcements || []);
     } catch { } finally { setLoading(false); }

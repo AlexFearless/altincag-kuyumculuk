@@ -22,8 +22,8 @@ export default function AdminOrders() {
       const url = filterStatus
         ? `/api/admin/orders?status=${filterStatus}`
         : '/api/admin/orders';
-      const res = await fetch(url, { credentials: 'include' });
-      if (res.status === 401) { router.push('/admin/login'); return; }
+      const res = await adminFetch(url);
+      if (!res.ok) return;
       const data = await res.json();
       if (res.ok) {
         setOrders(data.orders || []);

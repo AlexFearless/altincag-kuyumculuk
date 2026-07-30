@@ -42,7 +42,7 @@ export default function AdminCoupons() {
 
   const fetchCoupons = async () => {
     try {
-      const res = await fetch('/api/admin/coupons', { credentials: 'include' });
+      const res = await adminFetch('/api/admin/coupons');
       const data = await res.json();
       if (res.ok) {
         setCoupons(data.coupons || []);

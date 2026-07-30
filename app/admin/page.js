@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch } from '@/lib/adminApi';
 
 
 export default function AdminDashboard() {
@@ -31,9 +32,8 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('/api/admin/stats', { credentials: 'include' });
+      const res = await adminFetch('/api/admin/stats');
       if (!res.ok) {
-        if (res.status === 401) { router.push('/admin/login'); return; }
         return;
       }
       const data = await res.json();

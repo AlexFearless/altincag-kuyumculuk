@@ -13,7 +13,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
-  const { user, logout } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const router = useRouter();
 
   const [profileForm, setProfileForm] = useState({
@@ -24,6 +24,7 @@ export default function AccountPage() {
   });
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       router.push('/giris');
       return;
@@ -40,7 +41,7 @@ export default function AccountPage() {
       },
     });
     fetchOrders();
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const fetchOrders = async () => {
     try {

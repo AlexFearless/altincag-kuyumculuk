@@ -58,8 +58,7 @@ export default function AdminProducts() {
       const url = filterCategory
         ? `/api/admin/products?category=${filterCategory}`
         : '/api/admin/products';
-      const res = await fetch(url, { credentials: 'include' });
-      if (res.status === 401) { router.push('/admin/login'); return; }
+      const res = await adminFetch(url);
       const data = await res.json();
       if (res.ok) {
         setProducts(data.products || []);

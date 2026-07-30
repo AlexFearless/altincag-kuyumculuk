@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch } from '@/lib/adminApi';
 
 export default function AdminLogs() {
   const [logs, setLogs] = useState([]);
@@ -17,7 +18,7 @@ export default function AdminLogs() {
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch(`/api/admin/logs?page=${page}&limit=30`, { credentials: 'include' });
+      const res = await adminFetch(`/api/admin/logs?page=${page}&limit=30`);
       const data = await res.json();
       setLogs(data.logs || []);
       setTotal(data.total || 0);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch } from '@/lib/adminApi';
 
 export default function AdminReports() {
   const [loading, setLoading] = useState(true);
@@ -28,8 +29,8 @@ export default function AdminReports() {
   const fetchReportData = async () => {
     try {
       const [ordersRes, statsRes] = await Promise.all([
-        fetch('/api/admin/orders?limit=1000', { credentials: 'include' }),
-        fetch('/api/admin/stats', { credentials: 'include' }),
+        adminFetch('/api/admin/orders?limit=1000'),
+        adminFetch('/api/admin/stats'),
       ]);
       const ordersData = await ordersRes.json();
       const statsData = await statsRes.json();

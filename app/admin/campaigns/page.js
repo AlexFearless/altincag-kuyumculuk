@@ -63,7 +63,7 @@ export default function AdminCampaigns() {
 
   const fetchCampaigns = async () => {
     try {
-      const res = await fetch('/api/admin/campaigns', { credentials: 'include' });
+      const res = await adminFetch('/api/admin/campaigns');
       const data = await res.json();
       if (res.ok) {
         setCampaigns(data.campaigns || []);
