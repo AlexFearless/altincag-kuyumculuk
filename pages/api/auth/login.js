@@ -1,7 +1,7 @@
 import { getDb } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 import { rateLimit } from '@/lib/rateLimit';
-import { generateTokenPair, checkAccountLockout, recordFailedAttempt, clearFailedAttempts } from '@/lib/auth';
+import { generateTokenPair, clearFailedAttempts } from '@/lib/auth';
 import { setTokenCookies } from '@/lib/cookies';
 import { getClientIp } from '@/lib/getClientIp';
 
@@ -31,15 +31,6 @@ export default async function handler(req, res) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const identifier = `user:${cleanEmail}`;
-
-    const lockout = await checkAccountLockout(identifier);
-    if (lockout.locked) {
-      return res.status(423).json({
-        error: `Hesabınız kilitlendi. ${lockout.remainingSeconds} saniye sonra tekrar deneyin.`,
-        lockedUntil: lockout.remainingSeconds,
-      });
-    }
 
     const { data: user } = await db
       .from('users')
@@ -48,7 +39,6 @@ export default async function handler(req, res) {
       .single();
 
     if (!user) {
-      await recordFailedAttempt(identifier);
       return res.status(401).json({ error: 'Geçersiz e-posta veya şifre' });
     }
 
@@ -62,17 +52,10 @@ export default async function handler(req, res) {
 
     const isMatch = await bcrypt.compare(String(password), user.password);
     if (!isMatch) {
-      const result = await recordFailedAttempt(identifier, 5, 5);
-      if (result.locked) {
-        return res.status(423).json({
-          error: 'Çok fazla başarısız deneme. Hesabınız 5 dakika kilitlendi.',
-          lockedUntil: 300,
-        });
-      }
       return res.status(401).json({ error: 'Geçersiz e-posta veya şifre' });
     }
 
-    await clearFailedAttempts(identifier);
+    await clearFailedAttempts(`user:${cleanEmail}`);
 
     const ip = getClientIp(req);
     await db.from('users').update({ last_login_ip: ip }).eq('id', user.id);

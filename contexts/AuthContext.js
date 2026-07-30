@@ -25,6 +25,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const refreshTimerRef = useRef(null);
+  const refreshFailuresRef = useRef(0);
 
   const scheduleRefresh = useCallback((expiresIn) => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -37,22 +38,26 @@ export function AuthProvider({ children }) {
             headers: { 'Content-Type': 'application/json' },
           });
           if (!res.ok) {
-            logout();
+            refreshFailuresRef.current += 1;
+            const retryDelay = Math.min(refreshFailuresRef.current * 30000, 300000);
+            refreshTimerRef.current = setTimeout(() => scheduleRefresh(60), retryDelay);
             return;
           }
+          refreshFailuresRef.current = 0;
           const data = await res.json();
           if (data.expiresIn) {
             scheduleRefresh(data.expiresIn);
           }
         } catch {
-          logout();
+          refreshFailuresRef.current += 1;
+          const retryDelay = Math.min(refreshFailuresRef.current * 30000, 300000);
+          refreshTimerRef.current = setTimeout(() => scheduleRefresh(60), retryDelay);
         }
       }, refreshAt);
     }
   }, []);
 
   useEffect(() => {
-    // Read user info from cookie (set by server during login)
     const savedUser = readUserCookie();
     if (savedUser) {
       setUser(savedUser);
@@ -62,7 +67,7 @@ export function AuthProvider({ children }) {
     return () => { if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current); };
   }, [scheduleRefresh]);
 
-  const login = useCallback(async (email, password, rememberMe = false) => {
+  const login = useCallback(async (email, password) => {
     const res = await csrfFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -71,8 +76,6 @@ export function AuthProvider({ children }) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 
-    // Server sets user_info cookie via Set-Cookie header
-    // Read it after a tick to ensure cookie is available
     setUser(data.user);
     scheduleRefresh(data.expiresIn || 900);
     return data;
@@ -87,7 +90,6 @@ export function AuthProvider({ children }) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 
-    // Server sets user_info cookie
     setUser(data.user);
     if (data.expiresIn) scheduleRefresh(data.expiresIn);
     return data;
@@ -105,13 +107,18 @@ export function AuthProvider({ children }) {
     const interval = setInterval(async () => {
       try {
         const res = await csrfFetch('/api/user/profile');
+        if (res.status === 401) {
+          const data = await res.json().catch(() => ({}));
+          if (data.error === 'Hesabınız devre dışı') {
+            logout();
+            window.location.href = '/giris?reason=deactivated';
+          }
+          return;
+        }
+        if (!res.ok) return;
         const data = await res.json();
-        if (data.error === 'Hesabınız devre dışı' || data.error === 'Geçersiz oturum') {
-          logout();
-          window.location.href = '/giris?reason=deactivated';
-        } else if (data.user) {
+        if (data.user) {
           setUser(data.user);
-          // Update cookie with fresh data
           if (typeof document !== 'undefined') {
             const safeUser = { name: data.user.name, email: data.user.email };
             const encoded = encodeURIComponent(JSON.stringify(safeUser));
@@ -119,7 +126,7 @@ export function AuthProvider({ children }) {
           }
         }
       } catch {}
-    }, 60000);
+    }, 300000);
     return () => clearInterval(interval);
   }, [user, logout]);
 
