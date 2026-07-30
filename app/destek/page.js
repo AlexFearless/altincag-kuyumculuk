@@ -73,12 +73,10 @@ export default function SupportPage() {
     const interval = setInterval(async () => {
       try {
         const res = await csrfFetch('/api/user/messages');
+        if (!res.ok) return;
         const data = await res.json();
         const updated = data.messages?.find(m => m._id === selectedThread._id);
-        if (updated) {
-          setSelectedThread(updated);
-        }
-        setMessages(data.messages || []);
+        if (updated) setSelectedThread(updated);
       } catch {}
     }, 5000);
     return () => clearInterval(interval);
@@ -96,7 +94,7 @@ export default function SupportPage() {
 
     const currentReplyCount = selectedThread.replies?.length || 0;
     if (currentReplyCount > prevReplyCountRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     prevReplyCountRef.current = currentReplyCount;
   }, [selectedThread]);
@@ -104,13 +102,9 @@ export default function SupportPage() {
   const fetchMessages = async () => {
     try {
       const res = await csrfFetch('/api/user/messages');
+      if (!res.ok) return;
       const data = await res.json();
       setMessages(data.messages || []);
-      // Seçili thread'i de güncelle
-      if (selectedThread) {
-        const updated = data.messages?.find(m => m._id === selectedThread._id);
-        if (updated) setSelectedThread(updated);
-      }
     } catch (error) {
       console.error('Mesajlar yüklenemedi:', error);
     } finally {

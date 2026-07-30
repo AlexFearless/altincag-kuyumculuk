@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
-      const { data: messages } = await db.from('messages').select('*, message_replies(*)').eq('email', userEmail).order('created_at', { ascending: false });
+      const { data: messages } = await db.from('messages').select('*, message_replies(*)').eq('email', String(userEmail).toLowerCase().trim()).order('created_at', { ascending: false });
       const fixed = (messages || []).map(m => ({
         _id: m.id, id: m.id, name: m.name, email: m.email, phone: m.phone, subject: m.subject,
         message: m.message, isRead: m.is_read, status: m.status || 'open',
@@ -53,13 +53,24 @@ export default async function handler(req, res) {
       if (!id || !reply || !String(reply).trim()) return res.status(400).json({ error: 'Mesaj ve ID gerekli' });
       if (String(reply).length > 2000) return res.status(400).json({ error: 'Mesaj 2000 karakterden uzun olamaz' });
 
-      const { data: message } = await db.from('messages').select('*').eq('id', id).single();
+      const { data: message } = await db.from('messages').select('*, message_replies(*)').eq('id', id).single();
       if (!message) return res.status(404).json({ error: 'Mesaj bulunamadı' });
-      if (userEmail !== message.email) return res.status(403).json({ error: 'Bu mesaja yanıt verme yetkiniz yok' });
+      if (String(userEmail).toLowerCase().trim() !== String(message.email).toLowerCase().trim()) return res.status(403).json({ error: 'Bu mesaja yanıt verme yetkiniz yok' });
 
       await db.from('message_replies').insert({ message_id: id, sender: 'user', sender_name: sanitize(senderName || message.name), text: sanitize(String(reply).trim()) });
       await db.from('messages').update({ status: 'open' }).eq('id', id);
-      return res.status(200).json({ success: true });
+
+      const { data: updatedMessage } = await db.from('messages').select('*, message_replies(*)').eq('id', id).single();
+      return res.status(200).json({
+        success: true,
+        message: {
+          _id: updatedMessage.id, id: updatedMessage.id, name: updatedMessage.name, email: updatedMessage.email, phone: updatedMessage.phone,
+          subject: updatedMessage.subject, message: updatedMessage.message, isRead: updatedMessage.is_read,
+          status: updatedMessage.status || 'open',
+          replies: (updatedMessage.message_replies || []).map(r => ({ sender: r.sender, senderName: r.sender_name, text: r.text, createdAt: r.created_at })),
+          createdAt: updatedMessage.created_at,
+        },
+      });
     }
   } catch {
     res.status(500).json({ error: 'İşlem başarısız' });
