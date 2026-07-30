@@ -54,10 +54,9 @@ export default function CartPage() {
     setCouponError('');
     setCouponDiscount(null);
     try {
-      const res = await fetch('/api/coupons/validate', {
+      const res = await csrfFetch('/api/coupons/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ code: couponCode, orderAmount: getTotal(), cartCategories: [...new Set(items.map(i => i.product?.category).filter(Boolean))] }),
       });
       const data = await res.json();

@@ -47,7 +47,7 @@ async function handler(req, res) {
     const totalProfit = revenue - totalCost;
 
     const lowStockProducts = allProducts
-      .filter(p => p.stock <= 3 && p.is_active)
+      .filter(p => p.stock === 0 && p.is_active)
       .map(p => ({ id: p.id, name: p.name, stock: p.stock }));
 
     const unreadMessages = (messages.data || []).filter(m => !m.is_read).length;

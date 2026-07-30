@@ -141,7 +141,7 @@ export default async function handler(req, res) {
       const result = await atomicStockDecrement(db, vi.product_id, vi.quantity);
       if (!result.ok) {
         stockErrors.push(`${vi.name}: ${result.error}`);
-      } else if (result.newStock <= 3) {
+      } else if (result.newStock === 0) {
         db.from('notifications').insert({
           type: 'low_stock', title: 'Düşük Stok Uyarısı',
           message: `${vi.name} ürününün stokunda ${result.newStock} adet kaldı`,

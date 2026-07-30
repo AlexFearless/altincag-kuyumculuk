@@ -609,20 +609,6 @@ export default function AdminProducts() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
-                    Stok
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.stock}
-                    onChange={(e) =>
-                      setFormData({ ...formData, stock: e.target.value })
-                    }
-                    className="input-field"
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-earth-700 mb-1">
                     Barkod
                   </label>
                   <input
@@ -633,6 +619,20 @@ export default function AdminProducts() {
                     }
                     className="input-field"
                     placeholder="Örn: KP664"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">
+                    Stok
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.stock}
+                    onChange={(e) =>
+                      setFormData({ ...formData, stock: e.target.value })
+                    }
+                    className="input-field"
+                    min="0"
                   />
                 </div>
               </div>
