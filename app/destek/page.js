@@ -54,10 +54,7 @@ export default function SupportPage() {
   const selectedThreadIdRef = useRef(null);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/giris');
-      return;
-    }
+    if (!user) return;
     fetchMessages();
   }, [user, router]);
 

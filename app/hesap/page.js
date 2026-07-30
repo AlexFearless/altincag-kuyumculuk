@@ -25,10 +25,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
-      router.push('/giris');
-      return;
-    }
+    if (!user) return;
     setProfileForm({
       name: user.name || '',
       phone: user.phone || '',
@@ -46,6 +43,10 @@ export default function AccountPage() {
   const fetchOrders = async () => {
     try {
       const res = await csrfFetch('/api/user/orders');
+      if (res.status === 401) {
+        setOrders([]);
+        return;
+      }
       const data = await res.json();
       setOrders(data.orders || []);
     } catch (error) {
