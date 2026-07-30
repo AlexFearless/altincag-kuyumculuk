@@ -44,7 +44,7 @@ export default function AccountPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch('/api/user/orders', { credentials: 'include' });
+      const res = await csrfFetch('/api/user/orders');
       const data = await res.json();
       setOrders(data.orders || []);
     } catch (error) {

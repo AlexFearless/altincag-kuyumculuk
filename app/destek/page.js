@@ -75,7 +75,7 @@ export default function SupportPage() {
     if (!selectedThread || !user) return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('/api/user/messages', { credentials: 'include' });
+        const res = await csrfFetch('/api/user/messages');
         const data = await res.json();
         const updated = data.messages?.find(m => m._id === selectedThread._id);
         if (updated) {
@@ -106,7 +106,7 @@ export default function SupportPage() {
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch('/api/user/messages', { credentials: 'include' });
+      const res = await csrfFetch('/api/user/messages');
       const data = await res.json();
       setMessages(data.messages || []);
       // Seçili thread'i de güncelle
