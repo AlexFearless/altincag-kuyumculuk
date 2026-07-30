@@ -54,6 +54,7 @@ const CSRF_EXEMPT_PATHS = [
   '/api/auth/register',
   '/api/auth/verify-email',
   '/api/auth/send-verification',
+  '/api/auth/refresh',
   '/api/admin/login',
   '/api/admin/verify',
   '/api/products',
