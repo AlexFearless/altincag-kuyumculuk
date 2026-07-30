@@ -17,26 +17,6 @@ function generateOrderNumber() {
   return `AC${y}${m}${d}${r}`;
 }
 
-async function retryStockDecrement(db, productId, quantity, retries = 3) {
-  for (let attempt = 0; attempt < retries; attempt++) {
-    const { data: p, error: readErr } = await db
-      .from('products').select('stock, name').eq('id', productId).single();
-    if (readErr || !p) return { ok: false, error: 'ürün bulunamadı' };
-    if (p.stock < quantity) return { ok: false, error: `stok yetersiz (mevcut: ${p.stock})`, name: p.name };
-
-    const newStock = p.stock - quantity;
-    const { data: updated, error: updateErr } = await db
-      .from('products')
-      .update({ stock: newStock })
-      .eq('id', productId)
-      .eq('stock', p.stock)
-      .select('stock');
-    if (updateErr) return { ok: false, error: updateErr.message };
-    if (updated && updated.length > 0) return { ok: true, newStock, name: p.name };
-  }
-  return { ok: false, error: 'stok güncellenemedi (eşzamanlı erişim)' };
-}
-
 async function retryCouponIncrement(db, couponId, currentCount, retries = 3) {
   for (let attempt = 0; attempt < retries; attempt++) {
     const { data: c, error: readErr } = await db
@@ -244,6 +224,8 @@ export default async function handler(req, res) {
     }
     const order = orderInsert.data;
 
+    db.from('orders').update({ stock_deducted: false }).eq('id', order.id).then(() => {}).catch(() => {});
+
     step = 'insert_order_items';
     const orderItems = verifiedItems.map(vi => ({
       order_id: order.id,
@@ -255,24 +237,6 @@ export default async function handler(req, res) {
     }));
     const { error: itemsError } = await db.from('order_items').insert(orderItems);
     if (itemsError) console.error('Order items insert error:', itemsError.code);
-
-    step = 'update_stock';
-    const stockErrors = [];
-    for (const vi of verifiedItems) {
-      const result = await retryStockDecrement(db, vi.product_id, vi.quantity);
-      if (!result.ok) {
-        stockErrors.push(`${vi.name}: ${result.error}`);
-      } else if (result.newStock === 0) {
-        db.from('notifications').insert({
-          type: 'low_stock', title: 'Düşük Stok Uyarısı',
-          message: `${vi.name} ürününün stokunda ${result.newStock} adet kaldı`,
-          is_read: false, target_id: vi.product_id,
-        }).catch(() => {});
-      }
-    }
-    if (stockErrors.length > 0) {
-      console.error('Stock update issues:', stockErrors);
-    }
 
     step = 'update_coupon';
     if (couponId && discountAmount > 0) {
