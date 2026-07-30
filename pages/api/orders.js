@@ -17,6 +17,37 @@ function generateOrderNumber() {
   return `AC${y}${m}${d}${r}`;
 }
 
+async function atomicStockDecrement(db, productId, quantity) {
+  const { data: current, error: readErr } = await db
+    .from('products').select('stock').eq('id', productId).single();
+  if (readErr || !current) return { ok: false, error: 'ürün bulunamadı' };
+  if (current.stock < quantity) return { ok: false, error: `stok yetersiz (mevcut: ${current.stock})` };
+
+  const newStock = current.stock - quantity;
+  const { data: updated, error: updateErr } = await db
+    .from('products')
+    .update({ stock: newStock })
+    .eq('id', productId)
+    .eq('stock', current.stock)
+    .select('stock');
+  if (updateErr) return { ok: false, error: updateErr.message };
+  if (!updated || updated.length === 0) return { ok: false, error: 'stok güncellenemedi (eşzamanlı erişim)' };
+  return { ok: true, newStock };
+}
+
+async function atomicCouponIncrement(db, couponId, currentCount) {
+  const newCount = (currentCount || 0) + 1;
+  const { data: updated, error } = await db
+    .from('coupons')
+    .update({ used_count: newCount })
+    .eq('id', couponId)
+    .eq('used_count', currentCount || 0)
+    .select('used_count');
+  if (error) return { ok: false };
+  if (!updated || updated.length === 0) return { ok: false };
+  return { ok: true, newCount };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -74,9 +105,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: `Ürün bulunamadı veya pasif: ${item.name || item.product}` });
       }
       const qty = Math.min(Math.max(Number(item.quantity) || 1, 1), 100);
-      if (dbProduct.stock < qty) {
-        return res.status(400).json({ error: `"${dbProduct.name}" stokta yetersiz (mevcut: ${dbProduct.stock})` });
-      }
 
       let price = dbProduct.discount_type === 'real' && dbProduct.discounted_price > 0
         ? dbProduct.discounted_price
@@ -107,10 +135,31 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Geçerli ürün bulunamadı' });
     }
 
+    step = 'deduct_stock';
+    const stockErrors = [];
+    for (const vi of verifiedItems) {
+      const result = await atomicStockDecrement(db, vi.product_id, vi.quantity);
+      if (!result.ok) {
+        stockErrors.push(`${vi.name}: ${result.error}`);
+      } else if (result.newStock <= 3) {
+        db.from('notifications').insert({
+          type: 'low_stock', title: 'Düşük Stok Uyarısı',
+          message: `${vi.name} ürününün stokunda ${result.newStock} adet kaldı`,
+          is_read: false, target_id: vi.product_id,
+        }).catch(() => {});
+      }
+    }
+    if (stockErrors.length > 0) {
+      return res.status(400).json({ error: 'Stok hatası', details: stockErrors });
+    }
+
     step = 'calculate_discount';
     const shippingCost = 0;
-
     let discountAmount = 0;
+    let couponId = null;
+    let couponUsedCount = 0;
+    let couponMaxUses = null;
+
     if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
       try {
         const { data: coupon } = await db
@@ -132,12 +181,13 @@ export default async function handler(req, res) {
               } else {
                 discountAmount = Math.min(coupon.discount_value, subtotal);
               }
+              couponId = coupon.id;
+              couponUsedCount = coupon.used_count || 0;
+              couponMaxUses = coupon.max_uses;
             }
           }
         }
-      } catch (e) {
-        // Coupon validation failed, no discount applied
-      }
+      } catch (e) {}
     }
 
     step = 'generate_order_number';
@@ -152,99 +202,50 @@ export default async function handler(req, res) {
     } while (attempts < 5);
 
     step = 'insert_order';
-    let orderInsert = await db
-      .from('orders')
-      .insert({
-        order_number: orderNumber,
-        customer_first_name: sanitize(String(customerInfo.firstName).trim()),
-        customer_last_name: sanitize(String(customerInfo.lastName).trim()),
-        customer_email: String(customerInfo.email).toLowerCase().trim(),
-        customer_phone: sanitize(String(customerInfo.phone)),
-        customer_address: sanitize(String(customerInfo.address)),
-        customer_city: sanitize(String(customerInfo.city || 'İstanbul')),
-        customer_district: sanitize(String(customerInfo.district || '')),
-        customer_zip_code: customerInfo.zipCode || '',
-        special_instructions: sanitize(String(specialInstructions || '').substring(0, 500)),
-        subtotal,
-        shipping_cost: shippingCost,
-        discount_amount: Number(discountAmount) || 0,
-        coupon_code: sanitize(String(couponCode || '')),
-        total_amount: totalAmount,
-        payment_method: 'havale',
-        payment_status: 'havale_bekliyor',
-        order_status: 'pending',
-        guest_id: String(guestId || ''),
-        user_id: validUserId,
-        ip_address: getClientIp(req),
-      })
-      .select()
-      .single();
+    const orderData = {
+      order_number: orderNumber,
+      customer_first_name: sanitize(String(customerInfo.firstName).trim()),
+      customer_last_name: sanitize(String(customerInfo.lastName).trim()),
+      customer_email: String(customerInfo.email).toLowerCase().trim(),
+      customer_phone: sanitize(String(customerInfo.phone)),
+      customer_address: sanitize(String(customerInfo.address)),
+      customer_city: sanitize(String(customerInfo.city || 'İstanbul')),
+      customer_district: sanitize(String(customerInfo.district || '')),
+      customer_zip_code: customerInfo.zipCode || '',
+      special_instructions: sanitize(String(specialInstructions || '').substring(0, 500)),
+      subtotal,
+      shipping_cost: shippingCost,
+      discount_amount: Number(discountAmount) || 0,
+      coupon_code: sanitize(String(couponCode || '')),
+      total_amount: totalAmount,
+      payment_method: 'havale',
+      payment_status: 'havale_bekliyor',
+      order_status: 'pending',
+      guest_id: String(guestId || ''),
+      user_id: validUserId,
+      ip_address: getClientIp(req),
+    };
+
+    let orderInsert = await db.from('orders').insert(orderData).select().single();
 
     if (orderInsert.error) {
       const err = orderInsert.error;
       console.error('Order insert error:', err.code);
 
-      if (err.code === '23514') {
-        orderInsert = await db
-          .from('orders')
-          .insert({
-            order_number: orderNumber,
-            customer_first_name: sanitize(String(customerInfo.firstName).trim()),
-            customer_last_name: sanitize(String(customerInfo.lastName).trim()),
-            customer_email: String(customerInfo.email).toLowerCase().trim(),
-            customer_phone: sanitize(String(customerInfo.phone)),
-            customer_address: sanitize(String(customerInfo.address)),
-            customer_city: sanitize(String(customerInfo.city || 'İstanbul')),
-            customer_district: sanitize(String(customerInfo.district || '')),
-            customer_zip_code: customerInfo.zipCode || '',
-            special_instructions: sanitize(String(specialInstructions || '').substring(0, 500)),
-            subtotal,
-            shipping_cost: shippingCost,
-            total_amount: totalAmount,
-            payment_method: 'havale',
-            guest_id: String(guestId || ''),
-            user_id: validUserId,
-            ip_address: getClientIp(req),
-          })
-          .select()
-          .single();
-
+      if (err.code === '23514' || err.code === '23503') {
+        delete orderData.discount_amount;
+        delete orderData.coupon_code;
+        orderData.total_amount = totalAmount;
+        orderData.user_id = null;
+        orderInsert = await db.from('orders').insert(orderData).select().single();
         if (orderInsert.error) {
           console.error('Order insert fallback error:', orderInsert.error.code);
-          return res.status(500).json({ error: 'Sipariş oluşturulamadı. Lütfen yöneticiyle iletişime geçin.' });
+          return res.status(500).json({ error: 'Sipariş oluşturulamadı.' });
         }
       } else if (err.code === '23505') {
         return res.status(500).json({ error: 'Sipariş numarası çakışması. Lütfen tekrar deneyin.' });
-      } else if (err.code === '23503') {
-        orderInsert = await db
-          .from('orders')
-          .insert({
-            order_number: orderNumber,
-            customer_first_name: sanitize(String(customerInfo.firstName).trim()),
-            customer_last_name: sanitize(String(customerInfo.lastName).trim()),
-            customer_email: String(customerInfo.email).toLowerCase().trim(),
-            customer_phone: sanitize(String(customerInfo.phone)),
-            customer_address: sanitize(String(customerInfo.address)),
-            customer_city: sanitize(String(customerInfo.city || 'İstanbul')),
-            customer_district: sanitize(String(customerInfo.district || '')),
-            customer_zip_code: customerInfo.zipCode || '',
-            special_instructions: sanitize(String(specialInstructions || '').substring(0, 500)),
-            subtotal,
-            shipping_cost: shippingCost,
-            total_amount: totalAmount,
-            payment_method: 'havale',
-            guest_id: String(guestId || ''),
-            user_id: null,
-            ip_address: getClientIp(req),
-          })
-          .select()
-          .single();
-        if (orderInsert.error) {
-          console.error('Order insert FK fallback error:', orderInsert.error.message);
-          return res.status(500).json({ error: 'Sipariş oluşturulamadı.' });
-        }
       } else {
-        return res.status(500).json({ error: 'Sipariş oluşturulamadı. Lütfen yöneticiyle iletişime geçin.' });
+        return res.status(500).json({ error: 'Sipariş oluşturulamadı.' });
       }
     }
     const order = orderInsert.data;
@@ -258,83 +259,21 @@ export default async function handler(req, res) {
       quantity: vi.quantity,
       image: vi.image,
     }));
-
     const { error: itemsError } = await db.from('order_items').insert(orderItems);
-    if (itemsError) {
-      console.error('Order items insert error:', itemsError.code);
-    }
-
-    step = 'update_stock';
-    const stockErrors = [];
-    for (const vi of verifiedItems) {
-      try {
-        const { data: p, error: pErr } = await db.from('products').select('stock, name').eq('id', vi.product_id).single();
-        if (pErr || !p) {
-          stockErrors.push(`${vi.name}: ürün bulunamadı`);
-          continue;
-        }
-        if (p.stock < vi.quantity) {
-          stockErrors.push(`${vi.name}: stok yetersiz (mevcut: ${p.stock})`);
-          continue;
-        }
-        const newStock = p.stock - vi.quantity;
-        const { data: updated, error: stockUpdateErr } = await db
-          .from('products')
-          .update({ stock: newStock })
-          .eq('id', vi.product_id)
-          .eq('stock', p.stock)
-          .select('stock');
-        if (stockUpdateErr) {
-          stockErrors.push(`${vi.name}: ${stockUpdateErr.message}`);
-          continue;
-        }
-        if (!updated || updated.length === 0) {
-          const retry = Math.max(0, p.stock - vi.quantity);
-          await db.from('products').update({ stock: retry }).eq('id', vi.product_id).eq('stock', p.stock);
-        }
-        if (newStock <= 3) {
-          db.from('notifications').insert({
-            type: 'low_stock',
-            title: 'Düşük Stok Uyarısı',
-            message: `${p.name} ürününün stokunda ${newStock} adet kaldı`,
-            is_read: false,
-            target_id: vi.product_id,
-          }).catch(() => {});
-        }
-      } catch (stockErr) {
-        console.error('Stock update error for product:', vi.product_id);
-        stockErrors.push(`${vi.name}: ${stockErr.message}`);
-      }
-    }
-    if (stockErrors.length > 0) {
-      console.error('Stock update issues:', stockErrors);
-    }
+    if (itemsError) console.error('Order items insert error:', itemsError.code);
 
     step = 'update_coupon';
-    if (couponCode && discountAmount > 0) {
-      const { data: coupon } = await db.from('coupons').select('id, used_count, max_uses').ilike('code', couponCode).single();
-      if (coupon) {
-        const newCount = (coupon.used_count || 0) + 1;
-        if (coupon.max_uses && newCount > coupon.max_uses) {
-          const refundAmount = discountAmount;
+    if (couponId && discountAmount > 0) {
+      if (couponMaxUses && couponUsedCount >= couponMaxUses) {
+        await db.from('orders').update({
+          discount_amount: 0, coupon_code: '', total_amount: totalAmount + discountAmount,
+        }).eq('id', order.id);
+      } else {
+        const couponResult = await atomicCouponIncrement(db, couponId, couponUsedCount);
+        if (!couponResult.ok) {
           await db.from('orders').update({
-            discount_amount: 0,
-            coupon_code: '',
-            total_amount: totalAmount + refundAmount,
+            discount_amount: 0, coupon_code: '', total_amount: totalAmount + discountAmount,
           }).eq('id', order.id);
-        } else {
-          const { error: couponUpdateErr } = await db
-            .from('coupons')
-            .update({ used_count: newCount })
-            .eq('id', coupon.id)
-            .eq('used_count', coupon.used_count || 0);
-          if (couponUpdateErr) {
-            await db.from('orders').update({
-              discount_amount: 0,
-              coupon_code: '',
-              total_amount: totalAmount + discountAmount,
-            }).eq('id', order.id);
-          }
         }
       }
     }
@@ -357,6 +296,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error(`Order creation error at step "${step}":`, error?.message || error);
-    res.status(500).json({ error: 'Sipariş oluşturulurken bir hata oluştu. Lütfen daha sonra tekrar deneyin.' });
+    res.status(500).json({ error: 'Sipariş oluşturulurken bir hata oluştu.' });
   }
 }

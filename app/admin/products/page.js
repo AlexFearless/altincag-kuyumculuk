@@ -562,20 +562,6 @@ export default function AdminProducts() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
-                    Barkod
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.barcode}
-                    onChange={(e) =>
-                      setFormData({ ...formData, barcode: e.target.value })
-                    }
-                    className="input-field"
-                    placeholder="Örn: KP664"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-earth-700 mb-1">
                     Satış Fiyatı (TL) *
                   </label>
                   <input
@@ -587,6 +573,21 @@ export default function AdminProducts() {
                     className="input-field"
                     required
                     min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">
+                    Maliyet (TL)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.costPrice}
+                    onChange={(e) =>
+                      setFormData({ ...formData, costPrice: e.target.value })
+                    }
+                    className="input-field"
+                    min="0"
+                    placeholder="Kaça alındı"
                   />
                 </div>
               </div>
@@ -608,21 +609,6 @@ export default function AdminProducts() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
-                    Maliyet (TL)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.costPrice}
-                    onChange={(e) =>
-                      setFormData({ ...formData, costPrice: e.target.value })
-                    }
-                    className="input-field"
-                    min="0"
-                    placeholder="Kaça alındı"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-earth-700 mb-1">
                     Stok
                   </label>
                   <input
@@ -635,6 +621,23 @@ export default function AdminProducts() {
                     min="0"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">
+                    Barkod
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.barcode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, barcode: e.target.value })
+                    }
+                    className="input-field"
+                    placeholder="Örn: KP664"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     Kategori *
