@@ -62,11 +62,11 @@ export default async function handler(req, res) {
 
     const isMatch = await bcrypt.compare(String(password), user.password);
     if (!isMatch) {
-      const result = await recordFailedAttempt(identifier);
+      const result = await recordFailedAttempt(identifier, 5, 5);
       if (result.locked) {
         return res.status(423).json({
-          error: 'Çok fazla başarısız deneme. Hesabınız 15 dakika kilitlendi.',
-          lockedUntil: 900,
+          error: 'Çok fazla başarısız deneme. Hesabınız 5 dakika kilitlendi.',
+          lockedUntil: 300,
         });
       }
       return res.status(401).json({ error: 'Geçersiz e-posta veya şifre' });

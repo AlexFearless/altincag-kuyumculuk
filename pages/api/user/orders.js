@@ -31,12 +31,13 @@ export default async function handler(req, res) {
 
     const email = user.email;
     const { data: emailOrders } = await db.from('orders').select('*').eq('customer_email', email).order('created_at', { ascending: false });
-    let orders = emailOrders || [];
+    const { data: userIdOrders } = await db.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
 
-    if (orders.length === 0) {
-      const { data: userIdOrders } = await db.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-      orders = userIdOrders || [];
+    const ordersMap = new Map();
+    for (const o of [...(emailOrders || []), ...(userIdOrders || [])]) {
+      ordersMap.set(o.id, o);
     }
+    const orders = Array.from(ordersMap.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     for (const o of orders) {
       const { data: items } = await db.from('order_items').select('*, products(name, images)').eq('order_id', o.id);

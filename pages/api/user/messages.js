@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { sanitize } from '@/lib/sanitize';
 import { getJwtSecret } from '@/lib/secrets';
 import { rateLimit } from '@/lib/rateLimit';
+import { parseCookies } from '@/lib/cookieUtils';
 
 const messagesLimiter = rateLimit({ windowMs: 60000, max: 20, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
@@ -17,11 +18,18 @@ export default async function handler(req, res) {
 
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
+    let token = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else {
+      const cookies = parseCookies(req);
+      token = cookies.access_token || null;
+    }
+    if (!token) return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
 
     let userEmail;
     try {
-      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET, { algorithms: ['HS256'] });
+      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
       const { data: user } = await db.from('users').select('email, is_active').eq('id', decoded.id).single();
       if (!user || !user.is_active) return res.status(401).json({ error: 'Hesap bulunamadı veya pasif' });
       userEmail = user.email;

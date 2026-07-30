@@ -38,6 +38,11 @@ export function AuthProvider({ children }) {
           });
           if (!res.ok) {
             logout();
+            return;
+          }
+          const data = await res.json();
+          if (data.expiresIn) {
+            scheduleRefresh(data.expiresIn);
           }
         } catch {
           logout();

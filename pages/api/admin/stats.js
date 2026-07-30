@@ -16,10 +16,10 @@ async function handler(req, res) {
 
     const [productsResult, ordersResult, usersResult, messagesResult, topSellingResult, costResult] = await Promise.allSettled([
       db.from('products').select('id, name, stock, is_active', { count: 'exact' }),
-      db.from('orders').select('id, order_number, total_amount, order_status, created_at', { count: 'exact' }),
+      db.from('orders').select('id, order_number, total_amount, subtotal, discount_amount, order_status, created_at, payment_status', { count: 'exact' }),
       db.from('users').select('id', { count: 'exact' }),
       db.from('messages').select('id, is_read', { count: 'exact' }),
-      db.from('order_items').select('product_id, name, quantity, price, products(name, images, cost_price)').limit(500),
+      db.from('order_items').select('product_id, name, quantity, price, order_id, orders(subtotal, discount_amount)').limit(500),
       db.from('order_items').select('product_id, quantity, price, products(cost_price)').limit(1000),
     ]);
 
@@ -52,6 +52,15 @@ async function handler(req, res) {
 
     const unreadMessages = (messages.data || []).filter(m => !m.is_read).length;
 
+    const orderDiscountMap = {};
+    allOrderItems.forEach(item => {
+      const oid = item.order_id;
+      if (!oid) return;
+      if (!orderDiscountMap[oid]) {
+        orderDiscountMap[oid] = { subtotal: Number(item.orders?.subtotal) || 0, discount: Number(item.orders?.discount_amount) || 0 };
+      }
+    });
+
     const productSales = {};
     allOrderItems.forEach(item => {
       const pid = item.product_id;
@@ -66,8 +75,16 @@ async function handler(req, res) {
           totalRevenue: 0,
         };
       }
-      productSales[pid].totalQuantity += item.quantity || 0;
-      productSales[pid].totalRevenue += (Number(item.price) || 0) * (item.quantity || 0);
+      const qty = item.quantity || 0;
+      const itemTotal = (Number(item.price) || 0) * qty;
+      const orderInfo = orderDiscountMap[item.order_id];
+      let discountedItemTotal = itemTotal;
+      if (orderInfo && orderInfo.subtotal > 0 && orderInfo.discount > 0) {
+        const proportion = itemTotal / orderInfo.subtotal;
+        discountedItemTotal = itemTotal - (orderInfo.discount * proportion);
+      }
+      productSales[pid].totalQuantity += qty;
+      productSales[pid].totalRevenue += discountedItemTotal;
     });
 
     const topSellingProducts = Object.values(productSales)
