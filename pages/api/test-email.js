@@ -1,7 +1,7 @@
 import sgMail from '@sendgrid/mail';
 import { getSendgridApiKey, getSendgridFromEmail } from '@/lib/secrets';
 import { rateLimit } from '@/lib/rateLimit';
-import { withAuth } from '@/lib/auth';
+import { withAdminRole } from '@/lib/auth';
 
 const testLimiter = rateLimit({ windowMs: 300000, max: 3, message: 'Çok fazla test. 5 dakika bekleyin.' });
 
@@ -30,4 +30,4 @@ async function handler(req, res) {
   }
 }
 
-export default withAuth(handler);
+export default withAdminRole()(handler);

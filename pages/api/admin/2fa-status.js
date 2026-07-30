@@ -23,15 +23,15 @@ async function handler(req, res) {
 
     if (error) {
       console.error('2FA status error:', error.code);
-      res.status(500).json({ error: 'Durum kontrol edilemedi' });
+      return res.status(500).json({ error: 'Durum kontrol edilemedi' });
+    }
 
     res.status(200).json({
       success: true,
       enabled: data?.totp_enabled || false,
-      missingColumns: false,
     });
   } catch (error) {
-    console.error('2FA status error:', error);
+    console.error('2FA status error:', error.code);
     res.status(500).json({ error: 'Durum kontrol edilemedi' });
   }
 }
