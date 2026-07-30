@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
-import crypto from 'crypto';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -16,6 +15,15 @@ function generateNonce() {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   return btoa(String.fromCharCode(...bytes));
+}
+
+function constantTimeCompare(a, b) {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
 }
 
 const SECURITY_HEADERS_BASE = {
@@ -101,16 +109,8 @@ function verifyCsrfToken(request) {
   const headerToken = request.headers.get('x-csrf-token');
 
   if (!cookieToken || !headerToken) return false;
-  if (cookieToken.length !== headerToken.length) return false;
 
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(cookieToken, 'utf8'),
-      Buffer.from(headerToken, 'utf8')
-    );
-  } catch {
-    return false;
-  }
+  return constantTimeCompare(cookieToken, headerToken);
 }
 
 function isCsrfExempt(pathname) {
