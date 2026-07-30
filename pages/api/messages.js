@@ -2,13 +2,14 @@ import { getDb } from '@/lib/supabase';
 import { sanitize, validateEmail } from '@/lib/sanitize';
 import { rateLimit } from '@/lib/rateLimit';
 import { verifyToken } from '@/lib/auth';
+import { getTokenFromRequest } from '@/lib/cookieUtils';
 
 const msgLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla mesaj. 1 dakika bekleyin.' });
 
 async function verifyAdminToken(db, req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const decoded = await verifyToken(authHeader.split(' ')[1]);
+  const token = getTokenFromRequest(req);
+  if (!token) return null;
+  const decoded = await verifyToken(token);
   if (!decoded || decoded.userType !== 'admin') return null;
   const { data: admin } = await db.from('admins').select('id, name, role, is_active').eq('id', decoded.id).single();
   if (!admin || !admin.is_active) return null;
