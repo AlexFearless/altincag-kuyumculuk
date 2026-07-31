@@ -15,6 +15,7 @@ export default function AdminMessages() {
   const [activeCategory, setActiveCategory] = useState('all');
   const router = useRouter();
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const selectedMessageIdRef = useRef(null);
   const prevAdminReplyCountRef = useRef(0);
 
@@ -55,8 +56,8 @@ export default function AdminMessages() {
     if (isNewMessage) return;
 
     const currentReplyCount = selectedMessage.replies?.length || 0;
-    if (currentReplyCount > prevAdminReplyCountRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (currentReplyCount > prevAdminReplyCountRef.current && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
     prevAdminReplyCountRef.current = currentReplyCount;
   }, [selectedMessage]);
@@ -290,7 +291,7 @@ export default function AdminMessages() {
                   </p>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                   {/* İlk mesaj */}
                   <div className="flex justify-start">
                     <div className="max-w-[80%]">

@@ -28,24 +28,37 @@ export default async function handler(req, res) {
     if (!token) return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
 
     let userEmail;
+    let userId;
     try {
       const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-      const { data: user } = await db.from('users').select('email, is_active').eq('id', decoded.id).single();
-      if (!user || !user.is_active) return res.status(401).json({ error: 'Hesap bulunamadı veya pasif' });
+      userId = decoded.id;
+      const { data: user, error: userErr } = await db.from('users').select('email, is_active').eq('id', decoded.id).single();
+      if (userErr) return res.status(500).json({ error: 'Kullanıcı sorgulanamadı' });
+      if (!user) return res.status(401).json({ error: 'Kullanıcı bulunamadı' });
+      if (!user.is_active) return res.status(401).json({ error: 'Hesap pasif' });
       userEmail = user.email;
-    } catch {
-      return res.status(401).json({ error: 'Geçersiz oturum' });
+    } catch (e) {
+      return res.status(401).json({ error: 'Geçersiz oturum: ' + (e.message || 'bilinmeyen hata') });
     }
 
     if (req.method === 'GET') {
-      const { data: messages } = await db.from('messages').select('*, message_replies(*)').eq('email', String(userEmail).toLowerCase().trim()).order('created_at', { ascending: false });
+      const normalizedEmail = String(userEmail).toLowerCase().trim();
+      console.log('[user/messages] userId:', userId, 'email:', normalizedEmail);
+      let { data: messages, error: msgErr } = await db.from('messages').select('*, message_replies(*)').eq('email', normalizedEmail).order('created_at', { ascending: false });
+      if (msgErr) console.error('[user/messages] query error:', msgErr);
+      console.log('[user/messages] found by email:', (messages || []).length);
+      if ((!messages || messages.length === 0) && userId) {
+        const { data: byUserId } = await db.from('messages').select('*, message_replies(*)').eq('user_id', userId).order('created_at', { ascending: false });
+        console.log('[user/messages] found by user_id:', (byUserId || []).length);
+        if (byUserId && byUserId.length > 0) messages = byUserId;
+      }
       const fixed = (messages || []).map(m => ({
         _id: m.id, id: m.id, name: m.name, email: m.email, phone: m.phone, subject: m.subject,
         message: m.message, isRead: m.is_read, status: m.status || 'open',
         replies: (m.message_replies || []).map(r => ({ sender: r.sender, senderName: r.sender_name, text: r.text, createdAt: r.created_at })),
         createdAt: m.created_at,
       }));
-      return res.status(200).json({ messages: fixed });
+      return res.status(200).json({ messages: fixed, userEmail: normalizedEmail });
     }
 
     if (req.method === 'PUT') {

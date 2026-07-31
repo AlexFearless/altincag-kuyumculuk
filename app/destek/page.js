@@ -1,11 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { csrfFetch } from '@/lib/csrf';
-
 
 const categories = [
   { key: 'all', label: 'Tümü' },
@@ -38,36 +35,55 @@ const statusColors = {
 
 export default function SupportPage() {
   const { user } = useAuth();
-  const router = useRouter();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedThread, setSelectedThread] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ subject: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [replyText, setReplyText] = useState('');
   const [replying, setReplying] = useState(false);
   const [replyError, setReplyError] = useState('');
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const prevReplyCountRef = useRef(0);
   const selectedThreadIdRef = useRef(null);
 
+  const fetchMessages = useCallback(async () => {
+    try {
+      const res = await csrfFetch('/api/user/messages');
+      const data = await res.json();
+      if (!res.ok) {
+        setFetchError(data.error || `Sunucu hatası (${res.status})`);
+        setMessages([]);
+      } else {
+        setFetchError('');
+        setMessages(data.messages || []);
+      }
+    } catch (error) {
+      console.error('Mesajlar yüklenemedi:', error);
+      setFetchError('Mesajlar yüklenemedi. Lütfen tekrar deneyin.');
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) return;
+    setLoading(true);
     fetchMessages();
-  }, [user, router]);
+  }, [user, fetchMessages]);
 
-  // Her 10 saniyede bir mesajları yenile
   useEffect(() => {
     if (!user) return;
-    const interval = setInterval(() => {
-      fetchMessages();
-    }, 10000);
+    const interval = setInterval(fetchMessages, 15000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, fetchMessages]);
 
-  // Seçili thread'i de yenile
   useEffect(() => {
     if (!selectedThread || !user) return;
     const interval = setInterval(async () => {
@@ -78,7 +94,7 @@ export default function SupportPage() {
         const updated = data.messages?.find(m => m._id === selectedThread._id);
         if (updated) setSelectedThread(updated);
       } catch {}
-    }, 5000);
+    }, 8000);
     return () => clearInterval(interval);
   }, [selectedThread, user]);
 
@@ -89,34 +105,21 @@ export default function SupportPage() {
     }
     const isNewThread = selectedThreadIdRef.current !== selectedThread._id;
     selectedThreadIdRef.current = selectedThread._id;
-
     if (isNewThread) return;
 
     const currentReplyCount = selectedThread.replies?.length || 0;
-    if (currentReplyCount > prevReplyCountRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (currentReplyCount > prevReplyCountRef.current && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
     prevReplyCountRef.current = currentReplyCount;
   }, [selectedThread]);
 
-  const fetchMessages = async () => {
-    try {
-      const res = await csrfFetch('/api/user/messages');
-      if (!res.ok) return;
-      const data = await res.json();
-      setMessages(data.messages || []);
-    } catch (error) {
-      console.error('Mesajlar yüklenemedi:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleNewTicket = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+    setSubmitError('');
     try {
-      const res = await fetch('/api/messages', {
+      const res = await csrfFetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -126,15 +129,15 @@ export default function SupportPage() {
           subject: formData.subject,
           message: formData.message,
         }),
-        credentials: 'include',
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Mesaj gönderilemedi');
       setFormData({ subject: '', message: '' });
       setShowForm(false);
       fetchMessages();
     } catch (error) {
       console.error('Mesaj gönderilemedi:', error);
+      setSubmitError(error.message);
     } finally {
       setSubmitting(false);
     }
@@ -153,13 +156,14 @@ export default function SupportPage() {
           reply: replyText.trim(),
           senderName: user.name,
         }),
-        credentials: 'include',
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Yanıt gönderilemedi');
       setReplyText('');
-      setSelectedThread(data.message);
-      prevReplyCountRef.current = data.message.replies?.length || 0;
+      if (data.message) {
+        setSelectedThread(data.message);
+        prevReplyCountRef.current = data.message.replies?.length || 0;
+      }
       fetchMessages();
     } catch (error) {
       console.error('Yanıt gönderilemedi:', error);
@@ -199,6 +203,9 @@ export default function SupportPage() {
         {showForm && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <h2 className="font-serif text-lg font-semibold text-earth-800 mb-4">Yeni Destek Talebi</h2>
+            {submitError && (
+              <div className="bg-red-50 text-red-600 text-sm p-3 rounded mb-4">{submitError}</div>
+            )}
             <form onSubmit={handleNewTicket} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-earth-700 mb-1">Konu</label>
@@ -263,9 +270,18 @@ export default function SupportPage() {
               <div className="text-center py-12">
                 <div className="w-8 h-8 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
               </div>
+            ) : fetchError ? (
+              <div className="bg-red-50 rounded-lg p-6 text-center">
+                <p className="text-red-500 text-sm mb-2">{fetchError}</p>
+                <button onClick={fetchMessages} className="text-gold-600 text-sm font-medium hover:underline">
+                  Tekrar Dene
+                </button>
+              </div>
             ) : filteredMessages.length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-                <p className="text-earth-400 text-sm">Bu kategoride talep yok.</p>
+                <p className="text-earth-400 text-sm">
+                  {messages.length === 0 ? 'Henüz destek talebiniz yok.' : 'Bu kategoride talep yok.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -324,7 +340,7 @@ export default function SupportPage() {
                   </p>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                   {/* İlk mesaj */}
                   <div className="flex justify-start">
                     <div className="max-w-[80%]">
@@ -357,7 +373,7 @@ export default function SupportPage() {
                             {reply.sender === 'admin' ? 'AltınÇağ Kuyumculuk' : user.name}
                           </span>
                           <span className="text-xs text-earth-400">
-                            {new Date(reply.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                            {reply.createdAt ? new Date(reply.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : ''}
                           </span>
                           {reply.sender === 'user' && (
                             <div className="w-6 h-6 bg-earth-300 rounded-full flex items-center justify-center">
