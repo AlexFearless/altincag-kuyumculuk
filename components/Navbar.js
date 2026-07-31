@@ -165,7 +165,7 @@ export default function Navbar() {
             {user ? (
               <div className="space-y-3">
                 <Link href="/hesap" className="block text-sm font-medium text-earth-700 hover:text-gold-600">Hesabım</Link>
-                <button onClick={logout} className="block text-sm font-medium text-red-500 hover:text-red-600">Çıkış Yap</button>
+                <button onClick={() => { logout(); window.location.href = '/'; }} className="block text-sm font-medium text-red-500 hover:text-red-600">Çıkış Yap</button>
               </div>
             ) : (
               <div className="flex gap-3">

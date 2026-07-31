@@ -73,16 +73,21 @@ export default function AccountPage() {
         body: JSON.stringify({
           name: profileForm.name,
           phone: profileForm.phone,
-          email: profileForm.email,
           address: profileForm.address,
         }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.user) {
         const updatedUser = { ...user, ...data.user };
         const safeUser = { name: updatedUser.name, email: updatedUser.email };
         const encoded = encodeURIComponent(JSON.stringify(safeUser));
         document.cookie = `user_info=${encoded}; Path=/; Max-Age=86400; SameSite=Lax`;
+        setProfileForm({
+          name: data.user.name || profileForm.name,
+          phone: data.user.phone || profileForm.phone,
+          email: data.user.email || profileForm.email,
+          address: data.user.address || profileForm.address,
+        });
         setSaveMsg('Profiliniz güncellendi');
       } else {
         setSaveMsg(data.error || 'Güncelleme başarısız');
@@ -192,7 +197,7 @@ export default function AccountPage() {
               </div>
 
               <div className="border-t border-earth-100 mt-4 pt-4">
-                <button onClick={logout} className="w-full text-left px-3 py-2.5 rounded-sm text-sm font-medium text-red-500 hover:bg-red-50 transition-colors flex items-center space-x-2.5">
+                <button onClick={() => { logout(); window.location.href = '/'; }} className="w-full text-left px-3 py-2.5 rounded-sm text-sm font-medium text-red-500 hover:bg-red-50 transition-colors flex items-center space-x-2.5">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                   </svg>
