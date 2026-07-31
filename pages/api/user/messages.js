@@ -32,11 +32,12 @@ export default async function handler(req, res) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
       userId = decoded.id;
-      const { data: user, error: userErr } = await db.from('users').select('email, is_active').eq('id', decoded.id).single();
-      if (userErr) return res.status(500).json({ error: 'Kullanıcı sorgulanamadı' });
-      if (!user) return res.status(401).json({ error: 'Kullanıcı bulunamadı' });
-      if (!user.is_active) return res.status(401).json({ error: 'Hesap pasif' });
-      userEmail = user.email;
+      const table = decoded.userType === 'admin' ? 'admins' : 'users';
+      const { data: account, error: accountErr } = await db.from(table).select('email, is_active').eq('id', decoded.id).single();
+      if (accountErr) return res.status(500).json({ error: 'Hesap sorgulanamadı: ' + (accountErr.message || '') });
+      if (!account) return res.status(401).json({ error: 'Hesap bulunamadı' });
+      if (!account.is_active) return res.status(401).json({ error: 'Hesap pasif' });
+      userEmail = account.email;
     } catch (e) {
       return res.status(401).json({ error: 'Geçersiz oturum: ' + (e.message || 'bilinmeyen hata') });
     }

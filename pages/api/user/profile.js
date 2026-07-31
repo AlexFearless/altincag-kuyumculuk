@@ -20,8 +20,9 @@ export default async function handler(req, res) {
       const decoded = await verifyToken(token);
       if (!decoded) return res.status(401).json({ error: 'Geçersiz oturum' });
 
-      const { data: user } = await db.from('users').select('id, name, email, phone, address, is_active').eq('id', decoded.id).single();
-      if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+      const table = decoded.userType === 'admin' ? 'admins' : 'users';
+      const { data: user } = await db.from(table).select('id, name, email, phone, address, is_active').eq('id', decoded.id).single();
+      if (!user) return res.status(404).json({ error: 'Hesap bulunamadı' });
       if (!user.is_active) return res.status(403).json({ error: 'Hesabınız devre dışı' });
 
       return res.status(200).json({ success: true, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address } });
@@ -37,6 +38,8 @@ export default async function handler(req, res) {
     if (!token) return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
     const decoded = await verifyToken(token);
     if (!decoded) return res.status(401).json({ error: 'Geçersiz oturum' });
+
+    const table = decoded.userType === 'admin' ? 'admins' : 'users';
 
     const { name, phone, email, address } = req.body;
     const updateData = {};
@@ -59,7 +62,7 @@ export default async function handler(req, res) {
 
     if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Güncellenecek alan yok' });
 
-    const { data: user, error } = await db.from('users').update(updateData).eq('id', decoded.id).select('id, name, email, phone, address').single();
+    const { data: user, error } = await db.from(table).update(updateData).eq('id', decoded.id).select('id, name, email, phone, address').single();
     if (error) {
       if (error.code === '23505') return res.status(400).json({ error: 'Bu e-posta adresi zaten kullanımda' });
       return res.status(404).json({ error: 'Kullanıcı bulunamadı' });

@@ -25,7 +25,8 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
     }
 
-    const { data: user } = await db.from('users').select('id, email, name, is_active').eq('id', decoded.id).single();
+    const table = decoded.userType === 'admin' ? 'admins' : 'users';
+    const { data: user } = await db.from(table).select('id, email, name, is_active').eq('id', decoded.id).single();
     if (!user) return res.status(401).json({ error: 'Kullanıcı bulunamadı' });
     if (!user.is_active) return res.status(403).json({ error: 'Hesabınız devre dışı' });
 
