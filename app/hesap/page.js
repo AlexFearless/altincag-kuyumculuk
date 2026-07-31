@@ -78,16 +78,23 @@ export default function AccountPage() {
       });
       const data = await res.json();
       if (data.success && data.user) {
-        const updatedUser = { ...user, ...data.user };
-        const safeUser = { name: updatedUser.name, email: updatedUser.email };
+        const safeUser = { name: data.user.name, email: data.user.email };
         const encoded = encodeURIComponent(JSON.stringify(safeUser));
         document.cookie = `user_info=${encoded}; Path=/; Max-Age=86400; SameSite=Lax`;
-        setProfileForm({
-          name: data.user.name || profileForm.name,
-          phone: data.user.phone || profileForm.phone,
-          email: data.user.email || profileForm.email,
-          address: data.user.address || profileForm.address,
-        });
+        try {
+          const profileRes = await csrfFetch('/api/user/profile');
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            if (profileData.user) {
+              setProfileForm({
+                name: profileData.user.name || '',
+                phone: profileData.user.phone || '',
+                email: profileData.user.email || '',
+                address: profileData.user.address || { street: '', city: 'İstanbul', district: '', zipCode: '' },
+              });
+            }
+          }
+        } catch {}
         setSaveMsg('Profiliniz güncellendi');
       } else {
         setSaveMsg(data.error || 'Güncelleme başarısız');

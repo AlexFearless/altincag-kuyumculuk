@@ -63,11 +63,17 @@ export default async function handler(req, res) {
 
       if (Object.keys(updateData).length === 0) return res.status(400).json({ error: 'Güncellenecek alan yok' });
 
-    const { data: user, error } = await db.from(table).update(updateData).eq('id', decoded.id).select('id, name, email, phone, address').single();
+    const { data: users, error } = await db.from(table).update(updateData).eq('id', decoded.id).select('id, name, email, phone, address');
     if (error) {
+      console.error('[profile] update error:', error);
       if (error.code === '23505') return res.status(400).json({ error: 'Bu e-posta adresi zaten kullanımda' });
-      return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+      return res.status(500).json({ error: 'Profil güncellenemedi: ' + (error.message || error.code || 'bilinmeyen hata') });
     }
+    if (!users || users.length === 0) {
+      console.error('[profile] update affected 0 rows. table:', table, 'id:', decoded.id, 'updateData:', JSON.stringify(updateData));
+      return res.status(500).json({ error: 'Profil bulunamadı veya güncellenemedi. Tablo: ' + table });
+    }
+    const user = users[0];
 
     res.status(200).json({ success: true, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address } });
   } catch (error) {
