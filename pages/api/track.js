@@ -55,12 +55,14 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Sipariş bulunamadı. Kodu kontrol edin.' });
     }
 
-    const expectedToken = generateTrackToken(order.id);
-    if (token !== expectedToken) {
-      return res.status(200).json({
-        success: true,
-        requiresToken: true,
-      });
+    if (TRACK_SECRET) {
+      const expectedToken = generateTrackToken(order.id);
+      if (token !== expectedToken) {
+        return res.status(200).json({
+          success: true,
+          requiresToken: true,
+        });
+      }
     }
 
     const { data: orderItems } = await db

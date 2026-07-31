@@ -40,6 +40,13 @@ export default function AccountPage() {
     fetchOrders();
   }, [user, authLoading, router]);
 
+  // Her 30 saniyede bir siparişleri yenile
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(fetchOrders, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   const fetchOrders = async () => {
     try {
       const res = await csrfFetch('/api/user/orders');
@@ -198,7 +205,15 @@ export default function AccountPage() {
           <div className="md:col-span-3">
             {tab === 'orders' && (
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="font-serif text-xl font-semibold text-earth-800 mb-6">Siparişlerim</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="font-serif text-xl font-semibold text-earth-800">Siparişlerim</h2>
+                  <button onClick={fetchOrders} className="text-sm text-gold-600 hover:text-gold-700 flex items-center space-x-1">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+                    </svg>
+                    <span>Yenile</span>
+                  </button>
+                </div>
                 {loading ? (
                   <div className="text-center py-8">
                     <div className="w-8 h-8 border-4 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -245,6 +260,13 @@ export default function AccountPage() {
                         {order.specialInstructions && (
                           <div className="mt-2 bg-gold-50 p-2 rounded text-xs text-earth-600">
                             📝 {order.specialInstructions}
+                          </div>
+                        )}
+                        {order.orderStatus === 'shipped' && (
+                          <div className="mt-2">
+                            <Link href={`/kargo-takip?code=${order.orderNumber}`} className="text-xs text-purple-600 hover:text-purple-700 font-medium">
+                              Kargo Takibi Yap →
+                            </Link>
                           </div>
                         )}
                       </div>

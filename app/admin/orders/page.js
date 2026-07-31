@@ -49,6 +49,9 @@ export default function AdminOrders() {
         }
         fetchOrders();
         setSelectedOrder(null);
+      } else {
+        console.error('Sipariş güncellenemedi:', data.error);
+        alert(data.error || 'Sipariş güncellenemedi');
       }
     } catch (error) {
       console.error('Sipariş güncellenemedi:', error);

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 const stepIcons = {
   order: (
@@ -43,10 +44,18 @@ const statusColors = {
 };
 
 export default function KargoTakipPage() {
+  const searchParams = useSearchParams();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const c = searchParams.get('code');
+    if (c) {
+      setCode(c);
+    }
+  }, [searchParams]);
 
   const handleTrack = async (e) => {
     e.preventDefault();
@@ -57,7 +66,10 @@ export default function KargoTakipPage() {
     try {
       const res = await fetch(`/api/track?code=${encodeURIComponent(code.trim())}`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Kargo takip hatası oluştu');
+      if (data.requiresToken) {
+        throw new Error('Kargo bilgileri için geçerli bir bağlantı kullanın');
+      }
       setResult(data);
     } catch (err) {
       setError(err.message);
