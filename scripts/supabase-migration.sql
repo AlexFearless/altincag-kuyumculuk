@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS products (
   stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
   is_active BOOLEAN DEFAULT true,
   is_featured BOOLEAN DEFAULT false,
-  karat TEXT DEFAULT '' CHECK (karat IN ('14', '18', '22', '24', '')),
+  karat TEXT DEFAULT '' CHECK (karat IN ('8', '14', '18', '22', '24', '')),
   weight NUMERIC(10,2) DEFAULT 0,
   material TEXT DEFAULT '',
   discount_percent INTEGER DEFAULT 0 CHECK (discount_percent >= 0 AND discount_percent <= 100),
