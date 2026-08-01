@@ -11,6 +11,7 @@ export default function AdminOrders() {
   const [filterStatus, setFilterStatus] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [whatsappUrl, setWhatsappUrl] = useState(null);
+  const [paying, setPaying] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -479,48 +480,58 @@ export default function AdminOrders() {
                   <h4 className="text-sm font-semibold text-earth-700 mb-2">Ödeme Durumu</h4>
                   <div className="flex flex-wrap gap-2">
                     <button
+                      disabled={paying}
                       onClick={async () => {
+                        setPaying(true);
                         try {
                           const res = await adminFetch('/api/admin/orders', {
                             method: 'PATCH',
                             body: JSON.stringify({ id: selectedOrder._id, paymentStatus: 'odendi' }),
                           });
+                          const data = await res.json();
                           if (res.ok) {
-                            const data = await res.json();
                             setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, paymentStatus: 'odendi', ...(data.order || {}) } : o));
                             setSelectedOrder(null);
+                          } else {
+                            alert(data.error || 'Ödeme güncellenemedi');
                           }
                         } catch (e) { console.error(e); }
+                        finally { setPaying(false); }
                       }}
                       className={`px-4 py-2 rounded-sm text-sm font-medium transition-colors ${
                         (selectedOrder.paymentStatus === 'odendi' || selectedOrder.paymentStatus === 'paid')
                           ? 'bg-green-500 text-white'
                           : 'bg-earth-100 text-earth-600 hover:bg-green-100 hover:text-green-700'
-                      }`}
+                      } ${paying ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      ✓ Ödendi
+                      {paying ? 'Güncelleniyor...' : '✓ Ödendi'}
                     </button>
                     <button
+                      disabled={paying}
                       onClick={async () => {
+                        setPaying(true);
                         try {
                           const res = await adminFetch('/api/admin/orders', {
                             method: 'PATCH',
                             body: JSON.stringify({ id: selectedOrder._id, paymentStatus: 'havale_bekliyor' }),
                           });
+                          const data = await res.json();
                           if (res.ok) {
-                            const data = await res.json();
                             setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, paymentStatus: 'havale_bekliyor', ...(data.order || {}) } : o));
                             setSelectedOrder(null);
+                          } else {
+                            alert(data.error || 'Ödeme güncellenemedi');
                           }
                         } catch (e) { console.error(e); }
+                        finally { setPaying(false); }
                       }}
                       className={`px-4 py-2 rounded-sm text-sm font-medium transition-colors ${
                         selectedOrder.paymentStatus === 'havale_bekliyor'
                           ? 'bg-yellow-500 text-white'
                           : 'bg-earth-100 text-earth-600 hover:bg-yellow-100 hover:text-yellow-700'
-                      }`}
+                      } ${paying ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      ⏳ Havale Bekleniyor
+                      {paying ? 'Güncelleniyor...' : '⏳ Havale Bekleniyor'}
                     </button>
                   </div>
                 </div>

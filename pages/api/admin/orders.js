@@ -196,6 +196,10 @@ async function handlePatch(db, req, res) {
 
     const oldPaymentStatus = order.payment_status;
 
+    if (paymentStatus === oldPaymentStatus) {
+      return res.status(200).json({ success: true, order: mapOrder(order), message: 'Zaten bu durumda' });
+    }
+
     if (paymentStatus === 'odendi' && oldPaymentStatus !== 'odendi') {
       const updateData = { payment_status: 'odendi' };
       if (order.order_status === 'pending' || order.order_status === 'havale_bekliyor') {
