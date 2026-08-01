@@ -157,17 +157,18 @@ async function handlePut(db, req, res) {
 
     createLog(db, { action: `Sipariş durumu güncellendi: ${oldStatus} → ${orderStatus || 'tracking'}`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, oldStatus, newStatus: orderStatus }, req });
 
-    let whatsappUrl = null;
+      let whatsappUrl = null;
     if (orderStatus && orderStatus !== oldStatus && order.customer_phone) {
-      const statusMessages = {
-        pending: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) alındı. Teşekkürler!`,
-        processing: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) hazırlanıyor.`,
-        shipped: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) kargoya verildi.${trackingNumber ? ` Kargo takip: ${trackingNumber}` : ''}`,
-        delivered: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) teslim edildi. İyi günler dileriz!`,
-        cancelled: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) iptal edildi.`,
-        refunded: `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) için para iadesi yapıldı.`,
+      const statusTexts = {
+        pending: 'siparişiniz onay bekliyor',
+        processing: 'siparişiniz hazırlanmaya başlanmıştır',
+        shipped: 'siparişiniz kargoya verilmiştir',
+        delivered: 'siparişiniz başarıyla teslim edilmiştir',
+        cancelled: 'siparişiniz iptal edilmiştir',
+        refunded: 'siparişiniz iade edilmiştir',
       };
-      const msg = statusMessages[orderStatus] || `Siparişinizin durumu güncellendi: ${orderStatus}`;
+      const statusText = statusTexts[orderStatus] || 'sipariş durumunuz güncellenmiştir';
+      const msg = `Sayın ${order.customer_first_name}, siparişiniz (#${order.order_number}) hakkında bilgilendirme: ${statusText}. AltınÇağ Kuyumculuk${trackingNumber ? ` Kargo takip: ${trackingNumber}` : ''}`;
       const phone = order.customer_phone.replace(/[^0-9]/g, '');
       whatsappUrl = `https://wa.me/90${phone.startsWith('0') ? phone.slice(1) : phone}?text=${encodeURIComponent(msg)}`;
     }
@@ -230,7 +231,7 @@ async function handlePatch(db, req, res) {
 
       let whatsappUrl = null;
       if (order.customer_phone) {
-        const msg = `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) ödemesi onaylandı. Siparişiniz hazırlanıyor.`;
+        const msg = `Sayın ${order.customer_first_name}, siparişiniz (#${order.order_number}) hakkında bilgilendirme: ödemesi onaylanmıştır, siparişiniz hazırlanmaya başlanmıştır. AltınÇağ Kuyumculuk`;
         const phone = order.customer_phone.replace(/[^0-9]/g, '');
         whatsappUrl = `https://wa.me/90${phone.startsWith('0') ? phone.slice(1) : phone}?text=${encodeURIComponent(msg)}`;
       }
@@ -267,7 +268,7 @@ async function handlePatch(db, req, res) {
 
       let whatsappUrl = null;
       if (order.customer_phone) {
-        const msg = `Sayın ${order.customer_first_name}, siparişiniz (${order.order_number}) ödemesi iptal edildi.${reason ? ` Sebep: ${reason}` : ''}`;
+        const msg = `Sayın ${order.customer_first_name}, siparişiniz (#${order.order_number}) hakkında bilgilendirme: ödemesi iptal edilmiştir.${reason ? ` Sebep: ${reason}` : ''} AltınÇağ Kuyumculuk`;
         const phone = order.customer_phone.replace(/[^0-9]/g, '');
         whatsappUrl = `https://wa.me/90${phone.startsWith('0') ? phone.slice(1) : phone}?text=${encodeURIComponent(msg)}`;
       }

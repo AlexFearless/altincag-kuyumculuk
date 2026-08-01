@@ -291,7 +291,7 @@ export default function AdminOrders() {
                       </button>
                       {order.customerInfo?.phone && (
                         <a
-                          href={`https://wa.me/90${order.customerInfo.phone.replace(/[^0-9]/g, '').startsWith('0') ? order.customerInfo.phone.replace(/[^0-9]/g, '').slice(1) : order.customerInfo.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Sayın ${order.customerInfo.firstName}, siparişiniz (#${order.orderNumber}) hakkında bilgilendirme. AltınÇağ Kuyumculuk`)}`}
+                          href={`https://wa.me/90${order.customerInfo.phone.replace(/[^0-9]/g, '').startsWith('0') ? order.customerInfo.phone.replace(/[^0-9]/g, '').slice(1) : order.customerInfo.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Sayın ${order.customerInfo.firstName}, siparişiniz (#${order.orderNumber}) hakkında bilgilendirme: ${({ pending: 'siparişiniz onay bekliyor', processing: 'siparişiniz hazırlanmaya başlanmıştır', shipped: 'siparişiniz kargoya verilmiştir', delivered: 'siparişiniz başarıyla teslim edilmiştir', cancelled: 'siparişiniz iptal edilmiştir', refunded: 'siparişiniz iade edilmiştir' })[order.orderStatus] || 'sipariş durumunuz güncellenmiştir'}. AltınÇağ Kuyumculuk`)}`}
                           target="_blank"
                           rel="noopener"
                           className="text-green-600 hover:text-green-700 text-sm font-medium inline-flex items-center gap-1"
@@ -515,7 +515,7 @@ export default function AdminOrders() {
                 <div className="mt-4 pt-4 border-t border-earth-200 flex gap-3">
                   {selectedOrder.customerInfo?.phone && (
                     <a
-                      href={`https://wa.me/90${selectedOrder.customerInfo.phone.replace(/[^0-9]/g, '').startsWith('0') ? selectedOrder.customerInfo.phone.replace(/[^0-9]/g, '').slice(1) : selectedOrder.customerInfo.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Sayın ${selectedOrder.customerInfo.firstName}, siparişiniz (#${selectedOrder.orderNumber}) hakkında bilgilendirme. AltınÇağ Kuyumculuk`)}`}
+                      href={`https://wa.me/90${selectedOrder.customerInfo.phone.replace(/[^0-9]/g, '').startsWith('0') ? selectedOrder.customerInfo.phone.replace(/[^0-9]/g, '').slice(1) : selectedOrder.customerInfo.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Sayın ${selectedOrder.customerInfo.firstName}, siparişiniz (#${selectedOrder.orderNumber}) hakkında bilgilendirme: ${({ pending: 'siparişiniz onay bekliyor', processing: 'siparişiniz hazırlanmaya başlanmıştır', shipped: 'siparişiniz kargoya verilmiştir', delivered: 'siparişiniz başarıyla teslim edilmiştir', cancelled: 'siparişiniz iptal edilmiştir', refunded: 'siparişiniz iade edilmiştir' })[selectedOrder.orderStatus] || 'sipariş durumunuz güncellenmiştir'}. AltınÇağ Kuyumculuk`)}`}
                       target="_blank"
                       rel="noopener"
                       className="px-4 py-2 bg-green-500 text-white rounded-sm text-sm font-medium hover:bg-green-600 transition-colors inline-flex items-center gap-2"
