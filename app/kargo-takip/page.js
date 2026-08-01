@@ -64,7 +64,8 @@ export default function KargoTakipPage() {
     setError('');
     setResult(null);
     try {
-      const res = await fetch(`/api/track?code=${encodeURIComponent(code.trim())}`);
+      const cleanCode = code.trim().replace(/^#+/, '');
+      const res = await fetch(`/api/track?code=${encodeURIComponent(cleanCode)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Kargo takip hatası oluştu');
       if (data.requiresToken) {

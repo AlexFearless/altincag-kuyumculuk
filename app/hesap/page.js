@@ -274,9 +274,15 @@ export default function AccountPage() {
                             📝 {order.specialInstructions}
                           </div>
                         )}
-                        {order.orderStatus === 'shipped' && (
+                        {order.trackingNumber && (
+                          <div className="mt-2 flex items-center space-x-2">
+                            <span className="text-xs text-earth-400">Kargo Kodu:</span>
+                            <span className="text-xs font-mono font-semibold text-earth-700">{order.trackingNumber}</span>
+                          </div>
+                        )}
+                        {(order.orderStatus === 'shipped' || order.trackingNumber) && (
                           <div className="mt-2">
-                            <Link href={`/kargo-takip?code=${order.orderNumber}`} className="text-xs text-purple-600 hover:text-purple-700 font-medium">
+                            <Link href={`/kargo-takip?code=${order.trackingNumber || order.orderNumber}`} className="text-xs text-purple-600 hover:text-purple-700 font-medium">
                               Kargo Takibi Yap →
                             </Link>
                           </div>

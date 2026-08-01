@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Geçerli bir sipariş veya kargo kodu girin' });
     }
 
-    const trimmedCode = code.trim().toUpperCase();
+    const trimmedCode = code.trim().replace(/^#+/, '').toUpperCase();
 
     let { data: order } = await db
       .from('orders')
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       const { data: order3 } = await db
         .from('orders')
         .select('id, order_number, tracking_number, order_status, payment_method, total_amount, created_at, updated_at')
-        .eq('tracking_number', code.trim())
+        .eq('tracking_number', code.trim().replace(/^#+/, ''))
         .single();
       order = order3;
     }
