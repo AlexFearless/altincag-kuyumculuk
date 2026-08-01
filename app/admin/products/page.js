@@ -722,6 +722,7 @@ export default function AdminProducts() {
                     className="input-field"
                   >
                     <option value="">Seçiniz</option>
+                    <option value="8">8 Ayar</option>
                     <option value="14">14 Ayar</option>
                     <option value="18">18 Ayar</option>
                     <option value="22">22 Ayar</option>
