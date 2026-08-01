@@ -47,7 +47,7 @@ export default function AdminOrders() {
         if (data.whatsappUrl) {
           setWhatsappUrl(data.whatsappUrl);
         }
-        fetchOrders();
+        setOrders(prev => prev.map(o => o._id === orderId ? { ...o, orderStatus: status, ...(data.order || {}) } : o));
         setSelectedOrder(null);
       } else {
         console.error('Sipariş güncellenemedi:', data.error);
@@ -59,13 +59,13 @@ export default function AdminOrders() {
   };
 
   const deleteOrder = async (orderId) => {
-    if (!confirm('Bu siparişi silmek istediğinize emin misiniz? Stoklar iade edilecektir.')) return;
+    if (!confirm('Bu siparişi silmek istediğinize eminiz? Stoklar iade edilecektir.')) return;
     try {
       const res = await adminFetch(`/api/admin/orders?id=${orderId}`, {
         method: 'DELETE',
       });
       if (res.ok) {
-        fetchOrders();
+        setOrders(prev => prev.filter(o => o._id !== orderId));
         setSelectedOrder(null);
       }
     } catch (error) {
@@ -485,7 +485,11 @@ export default function AdminOrders() {
                             method: 'PATCH',
                             body: JSON.stringify({ id: selectedOrder._id, paymentStatus: 'odendi' }),
                           });
-                          if (res.ok) { fetchOrders(); setSelectedOrder(null); }
+                          if (res.ok) {
+                            const data = await res.json();
+                            setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, paymentStatus: 'odendi', ...(data.order || {}) } : o));
+                            setSelectedOrder(null);
+                          }
                         } catch (e) { console.error(e); }
                       }}
                       className={`px-4 py-2 rounded-sm text-sm font-medium transition-colors ${
@@ -503,7 +507,11 @@ export default function AdminOrders() {
                             method: 'PATCH',
                             body: JSON.stringify({ id: selectedOrder._id, paymentStatus: 'havale_bekliyor' }),
                           });
-                          if (res.ok) { fetchOrders(); setSelectedOrder(null); }
+                          if (res.ok) {
+                            const data = await res.json();
+                            setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, paymentStatus: 'havale_bekliyor', ...(data.order || {}) } : o));
+                            setSelectedOrder(null);
+                          }
                         } catch (e) { console.error(e); }
                       }}
                       className={`px-4 py-2 rounded-sm text-sm font-medium transition-colors ${
