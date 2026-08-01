@@ -105,6 +105,7 @@ export default function AdminProducts() {
       const body = editingProduct
         ? { ...formData, id: editingProduct._id }
         : formData;
+      console.log('[products] submit karat:', body.karat, 'full body karat:', JSON.stringify(body.karat));
 
       const res = await adminFetch(url, {
         method,

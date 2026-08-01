@@ -75,6 +75,7 @@ async function handleGet(db, req, res) {
 async function handlePost(db, req, res) {
   try {
     const { name, barcode, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType } = req.body;
+    console.log('[products] POST karat:', karat, 'type:', typeof karat);
     if (!name || !price || !category) {
       return res.status(400).json({ error: 'Ürün adı, fiyat ve kategori zorunludur' });
     }
