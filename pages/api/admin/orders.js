@@ -122,19 +122,18 @@ async function handlePut(db, req, res) {
     }
 
     if (orderStatus === 'cancelled' && oldStatus !== 'cancelled') {
-      if (order.stock_deducted) {
+      if (order.payment_status === 'odendi' || order.payment_status === 'paid') {
         const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
         for (const item of (items || [])) {
           if (item.product_id) {
             for (let attempt = 0; attempt < 3; attempt++) {
               const { data: p } = await db.from('products').select('stock').eq('id', item.product_id).single();
               if (!p) break;
-              const { data: updated } = await db.from('products').update({ stock: p.stock + item.quantity }).eq('id', item.product_id).eq('stock', p.stock).select('stock');
-              if (updated && updated.length > 0) break;
+              const { data: restored } = await db.from('products').update({ stock: p.stock + item.quantity }).eq('id', item.product_id).eq('stock', p.stock).select('stock');
+              if (restored && restored.length > 0) break;
             }
           }
         }
-        await db.from('orders').update({ stock_deducted: false }).eq('id', id);
       }
     }
 
@@ -206,29 +205,26 @@ async function handlePatch(db, req, res) {
         updateData.order_status = 'processing';
       }
 
-      if (!order.stock_deducted) {
-        const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
-        const stockErrors = [];
-        for (const item of (items || [])) {
-          if (!item.product_id) continue;
-          for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-              const { data: p } = await db.from('products').select('stock').eq('id', item.product_id).single();
-              if (!p) { stockErrors.push(item.name); break; }
-              const newStock = p.stock - item.quantity;
-              if (newStock < 0) { stockErrors.push(`${item.name}: stok yetersiz`); break; }
-              const { data: updatedProd } = await db.from('products').update({ stock: newStock }).eq('id', item.product_id).eq('stock', p.stock).select('stock');
-              if (updatedProd && updatedProd.length > 0) break;
-            } catch (stockErr) {
-              console.error('[PATCH] stock deduction error for item:', item.name, stockErr.message);
-              stockErrors.push(`${item.name}: ${stockErr.message}`);
-              break;
-            }
+      const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
+      const stockErrors = [];
+      for (const item of (items || [])) {
+        if (!item.product_id) continue;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const { data: p } = await db.from('products').select('stock').eq('id', item.product_id).single();
+            if (!p) { stockErrors.push(item.name); break; }
+            const newStock = p.stock - item.quantity;
+            if (newStock < 0) { stockErrors.push(`${item.name}: stok yetersiz`); break; }
+            const { data: updatedProd } = await db.from('products').update({ stock: newStock }).eq('id', item.product_id).eq('stock', p.stock).select('stock');
+            if (updatedProd && updatedProd.length > 0) break;
+          } catch (stockErr) {
+            console.error('[PATCH] stock deduction error for item:', item.name, stockErr.message);
+            stockErrors.push(`${item.name}: ${stockErr.message}`);
+            break;
           }
         }
-        updateData.stock_deducted = true;
-        if (stockErrors.length > 0) console.error('[PATCH] Stock deduction issues:', stockErrors);
       }
+      if (stockErrors.length > 0) console.error('[PATCH] Stock deduction issues:', stockErrors);
 
       const { data: updated, error: updateErr } = await db
         .from('orders')
@@ -268,19 +264,18 @@ async function handlePatch(db, req, res) {
 
       if (updateError) throw updateError;
 
-      if (order.stock_deducted) {
+      if (oldPaymentStatus === 'odendi' || oldPaymentStatus === 'paid') {
         const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
         for (const item of (items || [])) {
           if (item.product_id) {
             for (let attempt = 0; attempt < 3; attempt++) {
               const { data: p } = await db.from('products').select('stock').eq('id', item.product_id).single();
               if (!p) break;
-              const { data: updated } = await db.from('products').update({ stock: p.stock + item.quantity }).eq('id', item.product_id).eq('stock', p.stock).select('stock');
-              if (updated && updated.length > 0) break;
+              const { data: restored } = await db.from('products').update({ stock: p.stock + item.quantity }).eq('id', item.product_id).eq('stock', p.stock).select('stock');
+              if (restored && restored.length > 0) break;
             }
           }
         }
-        await db.from('orders').update({ stock_deducted: false }).eq('id', id);
       }
 
       createLog(db, { action: `Ödeme iptal edildi: ${oldPaymentStatus} → iptal. Sebep: ${reason || 'Belirtilmedi'}`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number, reason }, req });
@@ -321,7 +316,7 @@ async function handleDelete(db, req, res) {
     const { data: order } = await db.from('orders').select('*').eq('id', id).single();
     if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı' });
 
-    if (order.order_status !== 'cancelled' && order.stock_deducted) {
+    if (order.order_status !== 'cancelled' && (order.payment_status === 'odendi' || order.payment_status === 'paid')) {
       const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
       for (const item of (items || [])) {
         if (item.product_id) {
