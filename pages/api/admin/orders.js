@@ -212,24 +212,39 @@ async function handlePatch(db, req, res) {
         for (const item of (items || [])) {
           if (!item.product_id) continue;
           for (let attempt = 0; attempt < 3; attempt++) {
-            const { data: p } = await db.from('products').select('stock').eq('id', item.product_id).single();
-            if (!p) { stockErrors.push(item.name); break; }
-            const newStock = p.stock - item.quantity;
-            if (newStock < 0) { stockErrors.push(`${item.name}: stok yetersiz`); break; }
-            const { data: updated } = await db.from('products').update({ stock: newStock }).eq('id', item.product_id).eq('stock', p.stock).select('stock');
-            if (updated && updated.length > 0) break;
+            try {
+              const { data: p } = await db.from('products').select('stock').eq('id', item.product_id).single();
+              if (!p) { stockErrors.push(item.name); break; }
+              const newStock = p.stock - item.quantity;
+              if (newStock < 0) { stockErrors.push(`${item.name}: stok yetersiz`); break; }
+              const { data: updatedProd } = await db.from('products').update({ stock: newStock }).eq('id', item.product_id).eq('stock', p.stock).select('stock');
+              if (updatedProd && updatedProd.length > 0) break;
+            } catch (stockErr) {
+              console.error('[PATCH] stock deduction error for item:', item.name, stockErr.message);
+              stockErrors.push(`${item.name}: ${stockErr.message}`);
+              break;
+            }
           }
         }
         updateData.stock_deducted = true;
-        if (stockErrors.length > 0) console.error('Stock deduction issues on payment:', stockErrors);
+        if (stockErrors.length > 0) console.error('[PATCH] Stock deduction issues:', stockErrors);
       }
 
-      const { data: updated } = await db
+      const { data: updated, error: updateErr } = await db
         .from('orders')
         .update(updateData)
         .eq('id', id)
         .select()
         .single();
+
+      if (updateErr) {
+        console.error('[PATCH] order update error:', updateErr);
+        return res.status(500).json({ error: 'Ödeme durumu güncellenemedi: ' + (updateErr.message || updateErr.code) });
+      }
+      if (!updated) {
+        console.error('[PATCH] order update returned null. id:', id, 'updateData:', updateData);
+        return res.status(500).json({ error: 'Sipariş bulunamadı veya güncellenemedi' });
+      }
 
       createLog(db, { action: `Ödeme onaylandı: ${oldPaymentStatus} → odendi`, adminEmail: req.admin?.email || 'admin', targetType: 'order', targetId: id, details: { orderNumber: order.order_number }, req });
 
