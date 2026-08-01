@@ -63,7 +63,17 @@ export default async function handler(req, res) {
         .range(from, to);
 
       const total = count || 0;
-      res.status(200).json({ logs: logs || [], total, page: parseInt(page), pages: Math.ceil(total / safeLimit) });
+      const mapped = (logs || []).map(l => ({
+        _id: l.id,
+        action: l.action,
+        adminEmail: l.admin_email,
+        targetType: l.target_type,
+        targetId: l.target_id,
+        details: l.details,
+        ip: l.ip,
+        createdAt: l.created_at,
+      }));
+      res.status(200).json({ logs: mapped, total, page: parseInt(page), pages: Math.ceil(total / safeLimit) });
     } catch {
       res.status(500).json({ error: 'Loglar yüklenemedi' });
     }
