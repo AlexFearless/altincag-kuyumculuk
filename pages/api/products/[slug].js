@@ -46,6 +46,7 @@ export default async function handler(req, res) {
       isActive: product.is_active,
       isFeatured: product.is_featured,
       karat: product.karat,
+      ring_size: product.ring_size,
       weight: product.weight,
       material: product.material,
       discountPercent: product.discount_percent,

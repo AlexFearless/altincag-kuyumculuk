@@ -62,6 +62,7 @@ async function getCartWithProducts(db, guestId) {
       images: ci.products.images || [],
       category: ci.products.category,
       karat: ci.products.karat,
+      ring_size: ci.products.ring_size,
       weight: ci.products.weight,
       stock: ci.products.stock,
       isActive: ci.products.is_active,

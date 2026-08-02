@@ -41,6 +41,7 @@ export default function AdminProducts() {
     category: 'yuzuk',
     stock: '',
     karat: '',
+    ringSize: '',
     weight: '',
     material: '',
     isFeatured: false,
@@ -150,6 +151,7 @@ export default function AdminProducts() {
       category: product.category,
       stock: product.stock,
       karat: product.karat || '',
+      ringSize: product.ring_size || '',
       weight: product.weight || '',
       material: product.material || '',
       isFeatured: product.isFeatured || false,
@@ -255,6 +257,7 @@ export default function AdminProducts() {
       category: 'yuzuk',
       stock: '',
       karat: '',
+      ringSize: '',
       weight: '',
       material: '',
       isFeatured: false,
@@ -730,6 +733,25 @@ export default function AdminProducts() {
                     <option value="24">24 Ayar</option>
                   </select>
                 </div>
+                {formData.category === 'yuzuk' && (
+                  <div>
+                    <label className="block text-sm font-medium text-earth-700 mb-1">
+                      Beden
+                    </label>
+                    <select
+                      value={formData.ringSize}
+                      onChange={(e) =>
+                        setFormData({ ...formData, ringSize: e.target.value })
+                      }
+                      className="input-field"
+                    >
+                      <option value="">Seçiniz</option>
+                      {[...Array(15)].map((_, i) => (
+                        <option key={i + 6} value={String(i + 6)}>{i + 6}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     Ağırlık (gr)

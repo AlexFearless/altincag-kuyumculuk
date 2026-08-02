@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'İade Koşulları | Altınçag Kuyumculuk',
+  title: 'Para İade Politikası | Ömer Has Kuyumculuk',
 };
 
 export default function ReturnPolicy() {
@@ -8,53 +8,79 @@ export default function ReturnPolicy() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg p-8 lg:p-12 shadow-sm">
           <h1 className="font-serif text-3xl font-bold text-earth-800 mb-8">
-            İade Koşulları
+            Para İade Politikası
           </h1>
 
           <div className="prose prose-earth max-w-none space-y-6 text-earth-600">
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                İade Hakkı
+                14 Günlük Değişim Politikası
               </h2>
               <p>
-                Alıcı, ürünü teslim aldığı tarihten itibaren 14 gün içinde sebep göstermeksizin
-                sözleşmeden cayma hakkına sahiptir.
+                Ürününüzü aldıktan sonra 14 gün içinde değişim talebinde bulunabilirsiniz.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                İade Koşulları
+                Değişim Koşulları
               </h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>Ürün kullanılmamış olmalıdır</li>
-                <li>Ürün hasar görmemiş olmalıdır</li>
-                <li>Ürün orijinal ambalajında olmalıdır</li>
-                <li>Ürün ile birlikte tüm aksesuarlar iade edilmelidir</li>
-                <li>Fatura aslı ile birlikte iade edilmelidir</li>
+                <li>Ürününüzün giyilmemiş veya kullanılmamış olması</li>
+                <li>Etiketli ve orijinal ambalajında olması</li>
+                <li>Makbuz veya satın alma belgesine sahip olmanız</li>
               </ul>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                İade İşlemi
+                Değişim Başvurusu
               </h2>
               <p>
-                İade talebiniz onaylandıktan sonra, ürününüz Satıcıya ulaştığında kontrol
-                edilir. Uygun görülmesi halinde, iade tutarı 10 iş günü içinde
-                Alıcının banka hesabına iade edilir.
+                omerhaskuyumculuk@gmail.com adresinden bizimle iletişime geçebilirsiniz.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                İade Edilemeyen Ürünler
+                İstisnalar / İade Edilemeyen Ürünler
               </h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>Kişisel kullanıma yönelik ürünler (kulak piercing vb.)</li>
-                <li>Sipariş üzerine üretilen ürünler</li>
-                <li>Kullanılmış veya hasar görmüş ürünler</li>
+                <li><strong>Yüzük bedeninden kaynaklanan problemler iade kapsamı dışındadır.</strong> Lütfen bedeninizi doğru seçiniz.</li>
+                <li>Kişisel bakım ürünleri</li>
+                <li>Tehlikeli maddeler</li>
+                <li>İndirimdeki ürünler</li>
+                <li>Hediye kartları</li>
               </ul>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
+                Hasarlı Ürünler
+              </h2>
+              <p>
+                Siparişinizi teslim aldığınızda inceleyin. Ürün kusurlu veya hasarlıysa hemen bizimle iletişime geçin.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
+                Para İadeleri
+              </h2>
+              <p>
+                İadeniz kabul edildikten sonra 10 iş günü içinde orijinal ödeme yönteminize iade yapılır. 15 iş gününü aşan iadeler için omerhaskuyumculuk@gmail.com adresinden iletişime geçin.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
+                İletişim
+              </h2>
+              <p>
+                omerhaskuyumculuk@gmail.com<br />
+                +90 545 614 09 80<br />
+                Sultan Selim Mah. Sultan Selim Cad. No: 14/A, 34415 Kağıthane / İstanbul
+              </p>
             </section>
           </div>
         </div>

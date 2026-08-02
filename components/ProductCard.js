@@ -117,7 +117,7 @@ export default function ProductCard({ product }) {
               {categoryLabels[product.category] || product.category}
             </span>
             {product.karat && (
-              <span className="text-xs text-earth-400">{product.karat} Ayar</span>
+              <span className="text-xs text-earth-400">{product.karat} Ayar{product.ring_size ? ` | Beden ${product.ring_size}` : ''}</span>
             )}
           </div>
 

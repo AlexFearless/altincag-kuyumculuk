@@ -57,6 +57,7 @@ async function handleGet(db, req, res) {
       isActive: p.is_active,
       isFeatured: p.is_featured,
       karat: p.karat,
+      ring_size: p.ring_size,
       weight: p.weight,
       material: p.material,
       discountPercent: p.discount_percent,
@@ -74,7 +75,7 @@ async function handleGet(db, req, res) {
 
 async function handlePost(db, req, res) {
   try {
-    const { name, barcode, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType } = req.body;
+    const { name, barcode, description, price, costPrice, category, images, stock, karat, ringSize, weight, material, isFeatured, discountPercent, discountType } = req.body;
     console.log('[products] POST karat:', karat, 'type:', typeof karat);
     if (!name || !price || !category) {
       return res.status(400).json({ error: 'Ürün adı, fiyat ve kategori zorunludur' });
@@ -119,6 +120,7 @@ async function handlePost(db, req, res) {
         images: filteredImages,
         stock: Number(stock) || 0,
         karat: karat || '',
+        ring_size: ringSize || '',
         weight: Number(weight) || 0,
         material: sanitize(material || ''),
         is_featured: !!isFeatured,
@@ -140,7 +142,7 @@ async function handlePost(db, req, res) {
 
 async function handlePut(db, req, res) {
   try {
-    const { id, name, barcode, description, price, costPrice, category, images, stock, karat, weight, material, isFeatured, discountPercent, discountType, isActive, bulkUpdate, productIds, field, value, mode } = req.body;
+    const { id, name, barcode, description, price, costPrice, category, images, stock, karat, ringSize, weight, material, isFeatured, discountPercent, discountType, isActive, bulkUpdate, productIds, field, value, mode } = req.body;
 
     if (bulkUpdate && productIds && productIds.length > 0) {
       if (!field || (field !== 'price' && field !== 'stock')) {
@@ -211,6 +213,7 @@ async function handlePut(db, req, res) {
     }).slice(0, 10) : [];
     if (stock !== undefined) updateData.stock = Math.max(0, Number(stock) || 0);
     if (karat !== undefined) updateData.karat = karat;
+    if (ringSize !== undefined) updateData.ring_size = ringSize;
     if (weight !== undefined) updateData.weight = Number(weight) || 0;
     if (material !== undefined) updateData.material = sanitize(String(material));
     if (isFeatured !== undefined) updateData.is_featured = !!isFeatured;

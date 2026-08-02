@@ -16,6 +16,8 @@ const footerLinks = {
     { name: 'Mesafeli Satış Sözleşmesi', href: '/sozlesmeler/mesafeli-satis' },
     { name: 'İade Koşulları', href: '/sozlesmeler/iade' },
     { name: 'KVKK Metni', href: '/sozlesmeler/kvkk' },
+    { name: 'Gizlilik Politikası', href: '/sozlesmeler/gizlilik' },
+    { name: 'Hizmet Şartları', href: '/sozlesmeler/hizmet-sartlari' },
     { name: 'Kargo Politikası', href: '/sozlesmeler/kargo' },
   ],
   kurumsal: [

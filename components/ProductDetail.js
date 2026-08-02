@@ -343,6 +343,14 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
                   </p>
                 </div>
               )}
+              {product.ring_size && (
+                <div className="bg-earth-50 p-4 rounded-sm">
+                  <p className="text-xs text-earth-400 uppercase tracking-wide">Beden</p>
+                  <p className="text-sm font-semibold text-earth-700 mt-1">
+                    {product.ring_size}
+                  </p>
+                </div>
+              )}
               {product.weight > 0 && (
                 <div className="bg-earth-50 p-4 rounded-sm">
                   <p className="text-xs text-earth-400 uppercase tracking-wide">Ağırlık</p>
@@ -409,10 +417,16 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
               </button>
             </div>
 
+            {product.category === 'yuzuk' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-sm p-3 text-xs text-amber-700">
+                ⚠️ Yüzük bedeninden kaynaklanan problemler iade kapsamı dışındadır. Lütfen bedeninizi doğru seçiniz.
+              </div>
+            )}
+
             <div className="border-t border-earth-200 pt-6 space-y-3">
               <div className="flex items-center space-x-3 text-sm text-earth-600">
                 <ShieldIcon className="w-5 h-5 text-gold-500" />
-                <span>14 gün içinde koşulsuz iade</span>
+                <span>14 gün içinde iade (yüzük bedeni hariç)</span>
               </div>
               <div className="flex items-center space-x-3 text-sm text-earth-600">
                 <CertificateIcon className="w-5 h-5 text-gold-500" />

@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Kargo Politikası | Altınçag Kuyumculuk',
+  title: 'Kargo Politikası | Ömer Has Kuyumculuk',
 };
 
 export default function ShippingPolicy() {
@@ -14,20 +14,37 @@ export default function ShippingPolicy() {
           <div className="prose prose-earth max-w-none space-y-6 text-earth-600">
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Kargo Ücreti
+                Teslimat Bölgesi
               </h2>
               <p>
-                Tüm siparişlerde kargo ücretsizdir.
+                Sadece İstanbul iline kargo yapılmaktadır. İstanbul dışı adreslere teslimat gerçekleştirilmemektedir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Kargo Süresi
+                Kargo Süreci
               </h2>
               <p>
-                Siparişleriniz, onayından itibaren 1-3 iş günü içinde kargoya verilir.
-                Kargo teslim süresi, bulunduğunuz bölgeye göre 1-3 iş günüdür.
+                Siparişleriniz, banka onayı alındıktan sonra vermiş olduğunuz İstanbul adresine iletilmek üzere kargoya teslim edilir. Teslimat adresinin kargo şubesine uzaklığına göre kargo şirketi 1-3 gün içerisinde siparişinizi size ulaştıracaktır.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
+                Üretim Süreci
+              </h2>
+              <p>
+                Ürünün üretime girmesi gerekiyorsa veya sipariş verdiğiniz ürün stokta bulunmuyorsa, üretim süreci 7-30 gün arasında değişiklik gösterebilir.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
+                Adres Sorumluluğu
+              </h2>
+              <p>
+                Adresin tarafımıza yanlış iletilmesi halinde, ürünün teslimi ya da teslimde yaşanacak gecikmelerden firmamız sorumlu değildir.
               </p>
             </section>
 
@@ -36,30 +53,38 @@ export default function ShippingPolicy() {
                 Kargo Takibi
               </h2>
               <p>
-                Siparişiniz kargoya verildiğinde, e-posta adresinize kargo takip numarası
-                gönderilecektir. Bu numara ile kargonuzun durumunu takip edebilirsiniz.
+                Ürününüz kargo şirketine teslim edildiğinde, kargo firması tarafından size ürün takibi için SMS ile bilgilendirme yapılacaktır.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Hasarlı Kargo
+                Stok Tükenmesi
               </h2>
               <p>
-                Kargonuz hasarlı geldiyse, kargo görevlisinin önünde açınız ve tutanak
-                tutturunuz. Hasarlı ürünleri 24 saat içinde müşteri hizmetlerimize
-                bildiriniz.
+                Aynı ürünün aynı anda birden fazla kullanıcı tarafından satın alınması ve stokların tükenmesi söz konusu olabilir. Bu durumda, stoğumuzda kalmamış ürünler için en az 7, en fazla 30 günlük bekleme süresi geçerlidir. Ürün bu süre içerisinde temin edilemezse, yapılan ödeme müşteriye iade edilir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Teslimat Adresi
+                Bayram ve Tatil Günleri
               </h2>
               <p>
-                Sadece İstanbul sınırları içindeki adreslere teslimat yapılmaktadır.
-                Adres bilgilerinin eksik veya hatalı olması, teslimat gecikmelerine
-                yol açabilir.
+                Bayram ve resmi tatil günlerinde teslimat yapılmamaktadır. Bayram dönemlerindeki yoğunluk nedeniyle yaşanabilecek teslimat gecikmelerinden firmamız sorumlu tutulamaz.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
+                İletişim
+              </h2>
+              <p>
+                omerhaskuyumculuk@gmail.com
+                <br />
+                +90 545 614 09 80
+                <br />
+                Sultan Selim Mah. Sultan Selim Cad. No: 14/A, 34415 Kağıthane / İstanbul
               </p>
             </section>
           </div>

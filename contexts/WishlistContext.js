@@ -41,6 +41,7 @@ export function WishlistProvider({ children }) {
           images: product.images,
           category: product.category,
           karat: product.karat,
+          ring_size: product.ring_size,
           weight: product.weight,
         }];
       }
