@@ -111,7 +111,7 @@ async function handlePut(db, req, res) {
       processing: ['pending', 'shipped', 'delivered', 'cancelled'],
       shipped: ['pending', 'processing', 'delivered', 'cancelled'],
       delivered: ['shipped', 'processing', 'pending', 'refunded'],
-      cancelled: ['pending'],
+      cancelled: ['pending', 'processing'],
       refunded: [],
     };
     if (orderStatus && orderStatus !== oldStatus) {
