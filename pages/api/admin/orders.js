@@ -105,14 +105,14 @@ async function handlePut(db, req, res) {
 
     const oldStatus = order.order_status;
 
-    // Allow flexible status transitions (admin can move backward/forward)
+    // Allow all status transitions (admin can move to any status)
     const allowedTransitions = {
-      pending: ['processing', 'shipped', 'delivered', 'cancelled'],
-      processing: ['pending', 'shipped', 'delivered', 'cancelled'],
-      shipped: ['pending', 'processing', 'delivered', 'cancelled'],
-      delivered: ['shipped', 'processing', 'pending', 'refunded'],
-      cancelled: ['pending', 'processing'],
-      refunded: [],
+      pending: ['processing', 'shipped', 'delivered', 'cancelled', 'refunded'],
+      processing: ['pending', 'shipped', 'delivered', 'cancelled', 'refunded'],
+      shipped: ['pending', 'processing', 'delivered', 'cancelled', 'refunded'],
+      delivered: ['pending', 'processing', 'shipped', 'cancelled', 'refunded'],
+      cancelled: ['pending', 'processing', 'shipped', 'delivered', 'refunded'],
+      refunded: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
     };
     if (orderStatus && orderStatus !== oldStatus) {
       const allowed = allowedTransitions[oldStatus] || [];
