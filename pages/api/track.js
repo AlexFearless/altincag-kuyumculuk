@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 const trackLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla sorgu. 1 dakika bekleyin.' });
 
-const TRACK_SECRET = process.env.TRACK_SECRET || crypto.randomBytes(32).toString('hex');
+const TRACK_SECRET = process.env.TRACK_SECRET;
 
 function generateTrackToken(orderId) {
   return crypto.createHmac('sha256', TRACK_SECRET).update(orderId).digest('hex').substring(0, 16);
