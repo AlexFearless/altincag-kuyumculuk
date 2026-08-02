@@ -6,6 +6,11 @@ import { rateLimit } from '@/lib/rateLimit';
 
 const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
+function filterImages(images) {
+  if (!Array.isArray(images)) return [];
+  return images.filter(img => typeof img === 'string' && img.startsWith('http'));
+}
+
 async function handler(req, res) {
   if (!(await adminLimiter(req, res))) return;
 
@@ -52,7 +57,7 @@ async function handleGet(db, req, res) {
       cost_price: p.cost_price || 0,
       discountedPrice: p.discounted_price,
       category: p.category,
-      images: p.images || [],
+      images: filterImages(p.images),
       stock: p.stock,
       isActive: p.is_active,
       isFeatured: p.is_featured,

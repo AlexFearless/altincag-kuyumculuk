@@ -4,6 +4,11 @@ import { rateLimit } from '@/lib/rateLimit';
 
 const productsLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla istek. 1 dakika bekleyin.' });
 
+function filterImages(images) {
+  if (!Array.isArray(images)) return [];
+  return images.filter(img => typeof img === 'string' && img.startsWith('http'));
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -39,7 +44,7 @@ export default async function handler(req, res) {
       price: p.price,
       discountedPrice: p.discounted_price,
       category: p.category,
-      images: p.images || [],
+      images: filterImages(p.images),
       stock: p.stock,
       isActive: p.is_active,
       isFeatured: p.is_featured,
