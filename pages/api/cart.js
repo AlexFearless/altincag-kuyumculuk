@@ -111,7 +111,7 @@ export default async function handler(req, res) {
         if (!productId || typeof productId !== 'string') {
           return res.status(400).json({ error: 'Geçersiz ürün ID' });
         }
-        const qty = Math.min(Math.max(Number(quantity) || 1, 1), 100);
+        const qty = Math.min(Math.max(Number(quantity) || 1, 1), 10);
 
         let { data: cart } = await db.from('carts').select('id').eq('guest_id', guestId).single();
 
@@ -145,7 +145,7 @@ export default async function handler(req, res) {
             .select('*', { count: 'exact', head: true })
             .eq('cart_id', cart.id);
 
-          if ((count || 0) > 50) {
+          if ((count || 0) > 30) {
             const { data: lastItem } = await db
               .from('cart_items')
               .select('id')
@@ -153,7 +153,7 @@ export default async function handler(req, res) {
               .eq('product_id', productId)
               .single();
             if (lastItem) await db.from('cart_items').delete().eq('id', lastItem.id);
-            return res.status(400).json({ error: 'Sepet çok dolu, en fazla 50 ürün ekleyebilirsiniz' });
+            return res.status(400).json({ error: 'Sepet çok dolu, en fazla 30 ürün ekleyebilirsiniz' });
           }
         }
 
@@ -177,7 +177,7 @@ export default async function handler(req, res) {
         } else {
           await db
             .from('cart_items')
-            .update({ quantity: Math.min(qty, 100) })
+            .update({ quantity: Math.min(qty, 10) })
             .eq('cart_id', cart.id)
             .eq('product_id', updateProductId);
         }

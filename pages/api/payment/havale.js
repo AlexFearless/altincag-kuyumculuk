@@ -30,7 +30,7 @@ async function handler(req, res) {
 
       const { data: order } = await db
         .from('orders')
-        .select('*')
+        .select('id, order_status, payment_status')
         .eq('id', orderId)
         .eq('user_id', req.user.id)
         .single();
@@ -48,7 +48,7 @@ async function handler(req, res) {
         .update({
           payment_status: 'havale_bekliyor',
           payment_method: 'havale',
-          notes: sanitize(`Havale bilgileri: IBAN=${bankIban}, Gönderen=${senderName || ''}, Not=${note || ''}`),
+          notes: sanitize(`Havale bilgileri: IBAN=****${String(bankIban).slice(-4)}, Gönderen=${senderName || ''}, Not=${note || ''}`),
         })
         .eq('id', orderId);
 

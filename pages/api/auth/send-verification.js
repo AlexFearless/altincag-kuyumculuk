@@ -13,7 +13,7 @@ function generateCode() {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!limiter(req, res)) return;
+  if (!(await limiter(req, res))) return;
 
   let db;
   try { db = getDb(); } catch (e) { return res.status(503).json({ error: 'Veritabanı bağlantısı kurulamadı.' }); }

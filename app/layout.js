@@ -19,7 +19,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   const h = headers();
-  const nonce = h.get('x-nonce') || '';
+  const nonce = h.get('x-content-security-policy-nonce') || '';
 
   return (
     <html lang="tr" data-nonce={nonce}>

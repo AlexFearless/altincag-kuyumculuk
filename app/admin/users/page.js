@@ -83,7 +83,7 @@ export default function AdminUsers() {
       name: user.name || '',
       email: user.email || '',
       phone: user.phone || '',
-      password: user.password || '',
+      password: '',
     });
     setSaveMsg('');
   };
@@ -318,7 +318,7 @@ export default function AdminUsers() {
                       <div>
                         <label className="block text-xs font-medium text-earth-500 mb-1">Şifre</label>
                         <input
-                          type="text"
+                          type="password"
                           value={editForm.password}
                           onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
                           className="w-full px-3 py-2 border border-earth-200 rounded-sm text-sm focus:outline-none focus:border-gold-500 font-mono"

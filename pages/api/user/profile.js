@@ -40,12 +40,9 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'Geçersiz oturum' });
 
       const table = decoded.userType === 'admin' ? 'admins' : 'users';
-      console.log('[profile] PUT table:', table, 'id:', decoded.id, 'userType:', decoded.userType);
       const { data: current } = await db.from(table).select('email, name, phone, address').eq('id', decoded.id).single();
-      console.log('[profile] current:', JSON.stringify(current));
 
       const { name, phone, email, address } = req.body;
-      console.log('[profile] received:', JSON.stringify({ name, phone, email, address }));
       const updateData = {};
       if (name !== undefined) {
         if (typeof name !== 'string' || name.trim().length < 2 || name.length > 100) return res.status(400).json({ error: 'Geçersiz isim' });

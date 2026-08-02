@@ -5,6 +5,8 @@ import { sendOrderStatusEmail } from '@/lib/orderEmails';
 import { applyCampaignDiscounts } from '@/lib/campaignDiscounts';
 import crypto from 'crypto';
 import { getClientIp } from '@/lib/getClientIp';
+import { parseCookies } from '@/lib/cookieUtils';
+import { verifyTokenWithoutBlacklist } from '@/lib/auth';
 
 const orderLimiter = rateLimit({ windowMs: 60000, max: 5, message: 'Çok fazla sipariş denemesi. 1 dakika bekleyin.' });
 
@@ -53,11 +55,12 @@ export default async function handler(req, res) {
     const { guestId, userId, customerInfo, specialInstructions, items, paymentMethod, couponCode } = req.body;
 
     let validUserId = null;
-    if (userId && typeof userId === 'string') {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (uuidRegex.test(userId)) {
-        const { data: userExists } = await db.from('users').select('id').eq('id', userId).single();
-        if (userExists) validUserId = userId;
+    const cookieHeader = req.headers.cookie || '';
+    const cookies = parseCookies(cookieHeader);
+    if (cookies.access_token) {
+      const decoded = await verifyTokenWithoutBlacklist(cookies.access_token);
+      if (decoded && decoded.id) {
+        validUserId = decoded.id;
       }
     }
 
@@ -89,13 +92,23 @@ export default async function handler(req, res) {
 
     for (const item of items) {
       if (!item.product) continue;
-      const { data: dbProduct, error: prodErr } = await db.from('products').select('*').eq('id', item.product).single();
+      const { data: dbProduct, error: prodErr } = await db.from('products').select('id, name, price, discounted_price, discount_type, discount_percent, stock, images, is_active, category, campaign_discount').eq('id', item.product).single();
       if (prodErr || !dbProduct || !dbProduct.is_active) {
-        return res.status(400).json({ error: `Ürün bulunamadı veya pasif: ${item.name || item.product}` });
+        return res.status(400).json({ error: 'Ürün bulunamadı veya pasif' });
       }
-      const qty = Math.min(Math.max(Number(item.quantity) || 1, 1), 100);
+      const qty = Math.min(Math.max(Number(item.quantity) || 1, 1), 10);
       if (dbProduct.stock < qty) {
         return res.status(400).json({ error: `"${dbProduct.name}" stokta yetersiz (mevcut: ${dbProduct.stock})` });
+      }
+
+      const { error: stockErr } = await db
+        .from('products')
+        .update({ stock: dbProduct.stock - qty })
+        .eq('id', dbProduct.id)
+        .gte('stock', qty);
+
+      if (stockErr) {
+        return res.status(400).json({ error: `"${dbProduct.name}" stokta yetersiz` });
       }
 
       let price = dbProduct.discount_type === 'real' && dbProduct.discounted_price > 0
@@ -200,7 +213,7 @@ export default async function handler(req, res) {
       ip_address: getClientIp(req),
     };
 
-    let orderInsert = await db.from('orders').insert(orderData).select().single();
+    let orderInsert = await db.from('orders').insert(orderData).select('id, order_number, total_amount').single();
 
     if (orderInsert.error) {
       const err = orderInsert.error;
@@ -213,18 +226,23 @@ export default async function handler(req, res) {
         orderData.user_id = null;
         orderInsert = await db.from('orders').insert(orderData).select().single();
         if (orderInsert.error) {
-          console.error('Order insert fallback error:', orderInsert.error.code);
+          for (const vi of verifiedItems) {
+            const { data: p } = await db.from('products').select('stock').eq('id', vi.product_id).single();
+            if (p) await db.from('products').update({ stock: p.stock + vi.quantity }).eq('id', vi.product_id);
+          }
           return res.status(500).json({ error: 'Sipariş oluşturulamadı.' });
         }
       } else if (err.code === '23505') {
         return res.status(500).json({ error: 'Sipariş numarası çakışması. Lütfen tekrar deneyin.' });
       } else {
+        for (const vi of verifiedItems) {
+          const { data: p } = await db.from('products').select('stock').eq('id', vi.product_id).single();
+          if (p) await db.from('products').update({ stock: p.stock + vi.quantity }).eq('id', vi.product_id);
+        }
         return res.status(500).json({ error: 'Sipariş oluşturulamadı.' });
       }
     }
     const order = orderInsert.data;
-
-    db.from('orders').update({ stock_deducted: false }).eq('id', order.id).then(() => {}).catch(() => {});
 
     step = 'insert_order_items';
     const orderItems = verifiedItems.map(vi => ({

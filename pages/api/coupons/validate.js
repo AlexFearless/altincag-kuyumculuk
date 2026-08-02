@@ -1,7 +1,7 @@
 import { getDbPublic } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimit';
 
-const couponLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla kupon denemesi. 1 dakika bekleyin.' });
+const couponLimiter = rateLimit({ windowMs: 300000, max: 5, message: 'Çok fazla kupon denemesi. 5 dakika bekleyin.' });
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

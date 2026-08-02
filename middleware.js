@@ -15,10 +15,17 @@ function generateNonce() {
 }
 
 function constantTimeCompare(a, b) {
-  if (a.length !== b.length) return false;
+  const bufA = new TextEncoder().encode(a);
+  const bufB = new TextEncoder().encode(b);
+  if (bufA.length !== bufB.length) {
+    let result = 0;
+    for (let i = 0; i < bufA.length; i++) result |= bufA[i];
+    for (let i = 0; i < bufB.length; i++) result |= bufB[i];
+    return result === 0;
+  }
   let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < bufA.length; i++) {
+    result |= bufA[i] ^ bufB[i];
   }
   return result === 0;
 }
@@ -26,9 +33,13 @@ function constantTimeCompare(a, b) {
 const SECURITY_HEADERS_BASE = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+  'X-DNS-Prefetch-Control': 'off',
+  'X-Permitted-Cross-Domain-Policies': 'none',
+  'Cross-Origin-Resource-Policy': 'same-origin',
 };
 
 function buildCspHeaders(nonce) {
@@ -61,7 +72,6 @@ const CSRF_EXEMPT_PATHS = [
   '/api/search',
   '/api/track',
   '/api/announcements',
-  '/api/messages',
 ];
 
 function getJwtSecret() {

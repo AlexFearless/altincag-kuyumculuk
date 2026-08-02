@@ -63,7 +63,7 @@ async function handleGet(db, req, res) {
     const from = (parseInt(page) - 1) * safeLimit;
     const to = from + safeLimit - 1;
 
-    let query = db.from('orders').select('*, order_items(*, products(name, images))', { count: 'exact' });
+    let query = db.from('orders').select('id, order_number, customer_first_name, customer_last_name, customer_email, customer_phone, customer_address, customer_city, customer_district, customer_zip_code, special_instructions, subtotal, shipping_cost, discount_amount, coupon_code, total_amount, payment_method, payment_status, order_status, guest_id, user_id, tracking_number, notes, created_at, updated_at, order_items(id, product_id, name, price, quantity, image, products(name, images))', { count: 'exact' });
     if (status) query = query.eq('order_status', status);
     if (userId) {
       const { data: user } = await db.from('users').select('email').eq('id', userId).single();
@@ -100,7 +100,7 @@ async function handlePut(db, req, res) {
     const { id, orderStatus, trackingNumber, notes } = req.body;
     if (!id) return res.status(400).json({ error: 'Sipariş ID zorunludur' });
 
-    const { data: order } = await db.from('orders').select('*').eq('id', id).single();
+    const { data: order } = await db.from('orders').select('id, order_number, order_status, payment_status, payment_method, total_amount, user_id, guest_id, ip_address, created_at').eq('id', id).single();
     if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı' });
 
     const oldStatus = order.order_status;
@@ -123,7 +123,7 @@ async function handlePut(db, req, res) {
 
     if (orderStatus === 'cancelled' && oldStatus !== 'cancelled') {
       if (order.payment_status === 'odendi' || order.payment_status === 'paid') {
-        const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
+        const { data: items } = await db.from('order_items').select('product_id, quantity').eq('order_id', id);
         for (const item of (items || [])) {
           if (item.product_id) {
             for (let attempt = 0; attempt < 3; attempt++) {
@@ -185,7 +185,7 @@ async function handlePatch(db, req, res) {
     const reason = rawReason ? sanitize(String(rawReason).substring(0, 500)) : '';
     if (!id) return res.status(400).json({ error: 'Sipariş ID zorunludur' });
 
-    const { data: order } = await db.from('orders').select('*').eq('id', id).single();
+    const { data: order } = await db.from('orders').select('id, order_number, order_status, payment_status, payment_method, total_amount, customer_first_name, customer_email, customer_phone').eq('id', id).single();
     if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı' });
 
     const allowedPaymentStatuses = ['havale_bekliyor', 'odendi', 'iptal'];
@@ -205,7 +205,7 @@ async function handlePatch(db, req, res) {
         updateData.order_status = 'processing';
       }
 
-      const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
+      const { data: items } = await db.from('order_items').select('product_id, quantity, name').eq('order_id', id);
       const stockErrors = [];
       for (const item of (items || [])) {
         if (!item.product_id) continue;
@@ -265,7 +265,7 @@ async function handlePatch(db, req, res) {
       if (updateError) throw updateError;
 
       if (oldPaymentStatus === 'odendi' || oldPaymentStatus === 'paid') {
-        const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
+        const { data: items } = await db.from('order_items').select('product_id, quantity').eq('order_id', id);
         for (const item of (items || [])) {
           if (item.product_id) {
             for (let attempt = 0; attempt < 3; attempt++) {
@@ -313,11 +313,11 @@ async function handleDelete(db, req, res) {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'Sipariş ID zorunludur' });
 
-    const { data: order } = await db.from('orders').select('*').eq('id', id).single();
+    const { data: order } = await db.from('orders').select('id, order_number, order_status, payment_status, total_amount').eq('id', id).single();
     if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı' });
 
     if (order.order_status !== 'cancelled' && (order.payment_status === 'odendi' || order.payment_status === 'paid')) {
-      const { data: items } = await db.from('order_items').select('*').eq('order_id', id);
+      const { data: items } = await db.from('order_items').select('product_id, quantity').eq('order_id', id);
       for (const item of (items || [])) {
         if (item.product_id) {
           for (let attempt = 0; attempt < 3; attempt++) {

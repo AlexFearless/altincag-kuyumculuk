@@ -5,22 +5,6 @@ import { csrfFetch } from '@/lib/csrf';
 
 const AuthContext = createContext();
 
-function readUserCookie() {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(/user_info=([^;]+)/);
-  if (!match) return null;
-  try {
-    return JSON.parse(decodeURIComponent(match[1]));
-  } catch {
-    return null;
-  }
-}
-
-function clearUserCookie() {
-  if (typeof document === 'undefined') return;
-  document.cookie = 'user_info=; Path=/; Max-Age=0; SameSite=Lax';
-}
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,13 +42,23 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const savedUser = readUserCookie();
-    if (savedUser) {
-      setUser(savedUser);
-      scheduleRefresh(900);
+    let cancelled = false;
+    async function loadUser() {
+      try {
+        const res = await csrfFetch('/api/user/profile');
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user && !cancelled) {
+            setUser(data.user);
+            scheduleRefresh(900);
+          }
+        }
+      } catch {}
+      if (!cancelled) setLoading(false);
     }
-    setLoading(false);
-    return () => { if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current); };
+    loadUser();
+    return () => { cancelled = true; if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current); };
   }, [scheduleRefresh]);
 
   const login = useCallback(async (email, password) => {
@@ -97,7 +91,6 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    clearUserCookie();
     csrfFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     setUser(null);
   }, []);
@@ -117,14 +110,7 @@ export function AuthProvider({ children }) {
         }
         if (!res.ok) return;
         const data = await res.json();
-        if (data.user) {
-          setUser(data.user);
-          if (typeof document !== 'undefined') {
-            const safeUser = { name: data.user.name, email: data.user.email };
-            const encoded = encodeURIComponent(JSON.stringify(safeUser));
-            document.cookie = `user_info=${encoded}; Path=/; Max-Age=86400; SameSite=Lax`;
-          }
-        }
+        if (data.user) setUser(data.user);
       } catch {}
     }, 300000);
     return () => clearInterval(interval);

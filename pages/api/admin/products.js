@@ -29,7 +29,7 @@ async function handler(req, res) {
 async function handleGet(db, req, res) {
   try {
     const { category, search, page = 1, limit = 200 } = req.query;
-    const safeLimit = parseInt(limit) || 200;
+    const safeLimit = Math.min(parseInt(limit) || 50, 100);
     const from = (parseInt(page) - 1) * safeLimit;
     const to = from + safeLimit - 1;
 
