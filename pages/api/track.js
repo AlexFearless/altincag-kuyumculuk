@@ -64,7 +64,7 @@ export default async function handler(req, res) {
 
     const { data: orderItems } = await db
       .from('order_items')
-      .select('name, quantity')
+      .select('name, quantity, price')
       .eq('order_id', order.id);
 
     const steps = [
@@ -84,7 +84,8 @@ export default async function handler(req, res) {
     }));
 
     const items = (orderItems || []).map(i => ({
-      name: i.products?.name || i.name,
+      name: i.name,
+      price: i.price,
       quantity: i.quantity,
     }));
 
