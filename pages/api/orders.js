@@ -91,9 +91,18 @@ export default async function handler(req, res) {
 
     for (const item of items) {
       if (!item.product) continue;
-      const { data: dbProduct, error: prodErr } = await db.from('products').select('id, name, price, discounted_price, discount_type, discount_percent, stock, images, is_active, category, campaign_discount').eq('id', item.product).single();
-      if (prodErr || !dbProduct || !dbProduct.is_active) {
-        return res.status(400).json({ error: 'Ürün bulunamadı veya pasif' });
+      const { data: dbProduct, error: prodErr } = await db.from('products').select('id, name, price, discounted_price, discount_type, discount_percent, stock, images, is_active, category').eq('id', item.product).single();
+      if (prodErr) {
+        console.error('[orders] product query error:', prodErr.code, prodErr.message, 'productId:', item.product);
+        return res.status(400).json({ error: 'Ürün bulunamadı' });
+      }
+      if (!dbProduct) {
+        console.error('[orders] product not found:', item.product);
+        return res.status(400).json({ error: 'Ürün bulunamadı' });
+      }
+      if (!dbProduct.is_active) {
+        console.error('[orders] product inactive:', item.product, dbProduct.name);
+        return res.status(400).json({ error: `"${dbProduct.name}" şu an aktif değil` });
       }
       const qty = Math.min(Math.max(Number(item.quantity) || 1, 1), 10);
       if (dbProduct.stock < qty) {
