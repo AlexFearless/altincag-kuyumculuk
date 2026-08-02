@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/adminApi';
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [filterCategory, setFilterCategory] = useState('');
@@ -30,7 +30,6 @@ export default function AdminProducts() {
   const [bulkDiscountType, setBulkDiscountType] = useState('real');
   const [bulkDiscountApplying, setBulkDiscountApplying] = useState(false);
   const fileInputRef = useRef(null);
-  const router = useRouter();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -52,10 +51,11 @@ export default function AdminProducts() {
 
   useEffect(() => {
     fetchProducts();
-  }, [router, filterCategory]);
+  }, [filterCategory]);
 
   const fetchProducts = async () => {
     try {
+      setError(null);
       const url = filterCategory
         ? `/api/admin/products?category=${filterCategory}`
         : '/api/admin/products';
@@ -63,9 +63,12 @@ export default function AdminProducts() {
       const data = await res.json();
       if (res.ok) {
         setProducts(data.products || []);
+      } else {
+        setError(data.error || 'Ürünler yüklenemedi');
       }
     } catch (error) {
       console.error('Ürünler yüklenemedi:', error);
+      setError('Ürünler yüklenirken hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -391,6 +394,21 @@ export default function AdminProducts() {
             <div className="w-5 h-5 border-2 border-gold-500 border-t-transparent rounded-full animate-spin mr-2" />
             <span className="text-sm text-earth-500">Yükleniyor...</span>
           </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+              <svg className="w-10 h-10 text-red-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+              <p className="text-sm text-red-600 mb-3">{error}</p>
+              <button
+                onClick={() => { setLoading(true); setError(null); fetchProducts(); }}
+                className="px-4 py-2 bg-gold-500 text-white rounded-sm text-sm hover:bg-gold-600 transition-colors"
+              >
+                Tekrar Dene
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <table className="w-full">
@@ -659,6 +677,25 @@ export default function AdminProducts() {
                     ))}
                   </select>
                 </div>
+                {formData.category === 'yuzuk' && (
+                  <div>
+                    <label className="block text-sm font-medium text-earth-700 mb-1">
+                      Beden
+                    </label>
+                    <select
+                      value={formData.ringSize}
+                      onChange={(e) =>
+                        setFormData({ ...formData, ringSize: e.target.value })
+                      }
+                      className="input-field"
+                    >
+                      <option value="">Seçiniz</option>
+                      {[...Array(15)].map((_, i) => (
+                        <option key={i + 6} value={String(i + 6)}>{i + 6}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -733,25 +770,6 @@ export default function AdminProducts() {
                     <option value="24">24 Ayar</option>
                   </select>
                 </div>
-                {formData.category === 'yuzuk' && (
-                  <div>
-                    <label className="block text-sm font-medium text-earth-700 mb-1">
-                      Beden
-                    </label>
-                    <select
-                      value={formData.ringSize}
-                      onChange={(e) =>
-                        setFormData({ ...formData, ringSize: e.target.value })
-                      }
-                      className="input-field"
-                    >
-                      <option value="">Seçiniz</option>
-                      {[...Array(15)].map((_, i) => (
-                        <option key={i + 6} value={String(i + 6)}>{i + 6}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
                 <div>
                   <label className="block text-sm font-medium text-earth-700 mb-1">
                     Ağırlık (gr)

@@ -274,3 +274,9 @@ CREATE POLICY "Service role full access" ON cart_items FOR ALL USING (true) WITH
 CREATE POLICY "Service role full access" ON messages FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Service role full access" ON message_replies FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Service role full access" ON logs FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================
+-- Eksik sütunlar (ring_size, barcode)
+-- ============================================
+ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode TEXT DEFAULT '';
+ALTER TABLE products ADD COLUMN IF NOT EXISTS ring_size TEXT DEFAULT '';
