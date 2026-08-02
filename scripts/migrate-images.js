@@ -1,9 +1,6 @@
 /**
- * Migration: Move base64 images from products table to Supabase Storage
+ * Migration: Move base64 images to Supabase Storage
  * Run: node scripts/migrate-images.js
- * 
- * Safe to run multiple times - skips products that already have URL images.
- * No data is deleted from the database until you confirm everything works.
  */
 const { createClient } = require('@supabase/supabase-js');
 
@@ -15,139 +12,141 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 function extFromBase64(dataUrl) {
   const match = dataUrl.match(/^data:image\/(\w+);/);
-  if (!match) return 'jpg';
+  if (!match) return 'jpeg';
   const t = match[1].toLowerCase();
   if (t === 'png') return 'png';
   if (t === 'webp') return 'webp';
-  return 'jpg';
+  return 'jpeg';
 }
 
 function bufferFromBase64(dataUrl) {
-  const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+  const base64 = dataUrl.split(',')[1];
   return Buffer.from(base64, 'base64');
 }
 
 async function migrate() {
-  console.log('=== Supabase Storage Migration ===\n');
+  console.log('=== Storage Migration ===\n');
 
-  // 1. Ensure bucket exists
-  console.log('Checking bucket...');
-  const { error: bucketErr } = await supabase.storage.getBucket(BUCKET);
+  // 1. Bucket kontrol
+  console.log('1. Bucket kontrol...');
+  const { data: bucket, error: bucketErr } = await supabase.storage.getBucket(BUCKET);
   if (bucketErr) {
-    console.log('Creating bucket...');
-    const { error: createErr } = await supabase.storage.createBucket(BUCKET, {
+    console.log('   Bucket bulunamadı, oluşturuluyor...');
+    const { data, error: createErr } = await supabase.storage.createBucket(BUCKET, {
       public: true,
       fileSizeLimit: 5 * 1024 * 1024,
       allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
     });
-    if (createErr) { console.error('Bucket creation failed:', createErr); return; }
-    console.log('Bucket created.\n');
+    if (createErr) {
+      console.error('   BUCKET OLUSTURULAMADI:', createErr.message);
+      console.error('   Supabase Dashboard > Storage > New bucket ile olusturun:', BUCKET);
+      return;
+    }
+    console.log('   Bucket olusturuldu.\n');
   } else {
-    console.log('Bucket exists.\n');
+    console.log('   Bucket mevcut.\n');
   }
 
-  // 2. Process all products
-  let page = 0;
-  const pageSize = 20;
-  let totalMigrated = 0;
-  let totalSkipped = 0;
-  let totalFailed = 0;
+  // 2. Ürünleri çek
+  console.log('2. Urunler cekiliyor...');
+  const { data: products, error: queryErr } = await supabase
+    .from('products')
+    .select('id, name, images');
 
-  while (true) {
-    const { data: products, error } = await supabase
-      .from('products')
-      .select('id, name, images')
-      .range(page * pageSize, (page + 1) * pageSize - 1);
+  if (queryErr) {
+    console.error('   SORGU HATASI:', queryErr.message);
+    return;
+  }
 
-    if (error) { console.error('Query error:', error); break; }
-    if (!products || products.length === 0) break;
+  console.log(`   ${products.length} urun bulundu.\n`);
 
-    for (const product of products) {
-      const images = product.images || [];
+  let migrated = 0, skipped = 0, failed = 0;
 
-      // Skip if no images
-      if (images.length === 0) {
-        totalSkipped++;
+  // 3. Her ürünü işle
+  for (const product of products) {
+    const images = product.images || [];
+
+    if (images.length === 0) {
+      skipped++;
+      continue;
+    }
+
+    const hasBase64 = images.some(img => typeof img === 'string' && img.startsWith('data:'));
+    if (!hasBase64) {
+      skipped++;
+      continue;
+    }
+
+    process.stdout.write(`   ${product.name}... `);
+
+    const newUrls = [];
+    let hasError = false;
+
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+
+      if (typeof img === 'string' && img.startsWith('http')) {
+        newUrls.push(img);
         continue;
       }
 
-      // Skip if all images are already URLs
-      const hasBase64 = images.some(img => typeof img === 'string' && img.startsWith('data:'));
-      if (!hasBase64) {
-        totalSkipped++;
+      if (typeof img !== 'string' || !img.startsWith('data:')) {
+        console.log(`[gorsel ${i+1}: format uyumsuz]`);
+        hasError = true;
         continue;
       }
 
-      console.log(`Processing: ${product.name} (${images.length} images)...`);
+      try {
+        const ext = extFromBase64(img);
+        const buffer = bufferFromBase64(img);
+        const path = `${product.id}/${Date.now()}-${i}.${ext}`;
 
-      const newUrls = [];
-      for (let i = 0; i < images.length; i++) {
-        const img = images[i];
+        const { error: uploadErr } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, buffer, { contentType: `image/${ext}`, upsert: false });
 
-        // Already a URL, keep it
-        if (typeof img === 'string' && img.startsWith('http')) {
-          newUrls.push(img);
+        if (uploadErr) {
+          console.log(`[gorsel ${i+1}: upload hatasi - ${uploadErr.message}]`);
+          hasError = true;
           continue;
         }
 
-        // Not a valid base64 image, skip
-        if (typeof img !== 'string' || !img.startsWith('data:')) {
-          totalFailed++;
-          continue;
-        }
-
-        try {
-          const ext = extFromBase64(img);
-          const buffer = bufferFromBase64(img);
-          const path = `${product.id}/${Date.now()}-${i}.${ext}`;
-
-          const { error: uploadErr } = await supabase.storage
-            .from(BUCKET)
-            .upload(path, buffer, { contentType: `image/${ext}`, upsert: false });
-
-          if (uploadErr) {
-            console.error(`  Upload failed: ${uploadErr.message}`);
-            totalFailed++;
-            continue;
-          }
-
-          const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
-          if (urlData?.publicUrl) {
-            newUrls.push(urlData.publicUrl);
-            console.log(`  Uploaded: ${path}`);
-          }
-        } catch (e) {
-          console.error(`  Error: ${e.message}`);
-          totalFailed++;
-        }
-      }
-
-      // Update product with new URLs (base64 data stays in DB as backup until you confirm)
-      if (newUrls.length > 0) {
-        const { error: updateErr } = await supabase
-          .from('products')
-          .update({ images: newUrls })
-          .eq('id', product.id);
-
-        if (updateErr) {
-          console.error(`  Update failed: ${updateErr.message}`);
-          totalFailed++;
+        const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+        if (urlData?.publicUrl) {
+          newUrls.push(urlData.publicUrl);
         } else {
-          totalMigrated++;
-          console.log(`  Updated: ${product.name}\n`);
+          console.log(`[gorsel ${i+1}: URL alinamadi]`);
+          hasError = true;
         }
+      } catch (e) {
+        console.log(`[gorsel ${i+1}: ${e.message}]`);
+        hasError = true;
       }
     }
 
-    page++;
-    if (products.length < pageSize) break;
+    if (newUrls.length > 0) {
+      const { error: updateErr } = await supabase
+        .from('products')
+        .update({ images: newUrls })
+        .eq('id', product.id);
+
+      if (updateErr) {
+        console.log(`[DB guncelleme hatasi: ${updateErr.message}]`);
+        failed++;
+      } else {
+        migrated++;
+        console.log(hasError ? 'tamamlandi (kismi)' : 'tamam');
+      }
+    } else {
+      console.log('atlandi (gorsel yok)');
+      skipped++;
+    }
   }
 
-  console.log('=== Migration Complete ===');
-  console.log(`  Migrated: ${totalMigrated} products`);
-  console.log(`  Skipped: ${totalSkipped} (no base64 images)`);
-  console.log(`  Failed: ${totalFailed}`);
-  console.log('\nNew products will use Supabase Storage automatically.');
+  console.log('\n=== Tamamlandi ===');
+  console.log(`   Tasinan: ${migrated}`);
+  console.log(`   Atlanan: ${skipped}`);
+  console.log(`   Basarisiz: ${failed}`);
 }
 
-migrate().catch(console.error);
+migrate().catch(e => console.error('GENEL HATA:', e.message));

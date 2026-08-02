@@ -50,7 +50,7 @@ async function handler(req, res) {
       const match = img.match(/^data:image\/(\w+);base64,(.+)$/);
       if (!match) continue;
 
-      const ext = match[1] === 'png' ? 'png' : match[1] === 'webp' ? 'webp' : 'jpg';
+      const ext = match[1] === 'png' ? 'png' : match[1] === 'webp' ? 'webp' : 'jpeg';
       const contentType = `image/${ext}`;
       const buffer = Buffer.from(match[2], 'base64');
 
