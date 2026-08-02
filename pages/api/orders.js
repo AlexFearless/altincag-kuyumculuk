@@ -55,8 +55,7 @@ export default async function handler(req, res) {
     const { guestId, userId, customerInfo, specialInstructions, items, paymentMethod, couponCode } = req.body;
 
     let validUserId = null;
-    const cookieHeader = req.headers.cookie || '';
-    const cookies = parseCookies(cookieHeader);
+    const cookies = parseCookies(req);
     if (cookies.access_token) {
       const decoded = await verifyTokenWithoutBlacklist(cookies.access_token);
       if (decoded && decoded.id) {
