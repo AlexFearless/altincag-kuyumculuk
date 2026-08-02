@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'KVKK Metni | Ömer Has Kuyumculuk',
+  title: 'KVKK Metni | AltınÇağ Kuyumculuk',
 };
 
 export default function KVKK() {
@@ -8,7 +8,7 @@ export default function KVKK() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg p-8 lg:p-12 shadow-sm">
           <h1 className="font-serif text-3xl font-bold text-earth-800 mb-8">
-            Kişisel Verilerin Korunması Kanunu (KVKK) Metni
+            KVKK Aydınlatma Metni
           </h1>
 
           <div className="prose prose-earth max-w-none space-y-6 text-earth-600 text-sm">
@@ -17,7 +17,7 @@ export default function KVKK() {
                 1. Veri Sorumlusu
               </h2>
               <p>
-                Kişisel verileriniz, veri sorumlusu sıfatıyla Ömer Has Kuyumculuk (Sultan Selim Mah. Sultan Selim Cad. No: 14/A, 34415 Kağıthane / İstanbul) tarafından aşağıda açıklanan kapsamda işlenmektedir.
+                Kişisel verileriniz, veri sorumlusu sıfatıyla AltınÇağ Kuyumculuk (Çağlayan, Vatan Cd. No:55/C, 34403 Kağıthane/İstanbul) tarafından aşağıda açıklanan kapsamda işlenmektedir.
               </p>
             </section>
 
@@ -25,18 +25,12 @@ export default function KVKK() {
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
                 2. İşlenen Kişisel Veriler
               </h2>
-              <p>
-                Kimlik ve iletişim bilgileri: ad, soyad, telefon numarası, e-posta adresi, teslimat ve fatura adresi.
-              </p>
-              <p>
-                Sipariş ve işlem bilgileri: sipariş numarası, sipariş içeriği, ödeme yöntemi, iade ve değişim kayıtları.
-              </p>
-              <p>
-                İşlem güvenliği bilgileri: IP adresi, çerez kayıtları, site kullanım hareketleri.
-              </p>
-              <p>
-                Kredi kartı bilgileriniz tarafımızca görülmez ve saklanmaz; ödeme işlemleri lisanslı ödeme kuruluşları üzerinden gerçekleştirilir.
-              </p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Kimlik ve iletişim bilgileri: ad, soyad, telefon numarası, e-posta adresi, teslimat ve fatura adresi</li>
+                <li>Sipariş ve işlem bilgileri: sipariş numarası, sipariş içeriği, ödeme yöntemi, iade ve değişim kayıtları</li>
+                <li>İşlem güvenliği bilgileri: IP adresi, çerez kayıtları, site kullanım hareketleri</li>
+                <li>Kredi kartı bilgileriniz tarafımızca görülmez ve saklanmaz; ödeme işlemleri lisanslı ödeme kuruluşları üzerinden gerçekleştirilir</li>
+              </ul>
             </section>
 
             <section>
@@ -58,7 +52,7 @@ export default function KVKK() {
                 4. Hukuki Sebepler
               </h2>
               <p>
-                Kişisel verileriniz KVKK'nın 5. maddesi uyarınca; sözleşmenin kurulması ve ifası için gerekli olması, hukuki yükümlülüklerimizin yerine getirilmesi, meşru menfaatlerimiz ve gerektiği hâllerde açık rızanız hukuki sebeplerine dayanılarak işlenmektedir.
+                Kişisel verileriniz 6698 sayılı KVKK'nın 5. maddesi uyarınca; sözleşmenin kurulması ve ifası için gerekli olması, hukuki yükümlülüklerimizin yerine getirilmesi, meşru menfaatlerimiz ve gerektiği hâllerde açık rızanız hukuki sebeplerine dayanılarak işlenmektedir.
               </p>
             </section>
 
@@ -94,7 +88,7 @@ export default function KVKK() {
                 8. İlgili Kişi Olarak Haklarınız
               </h2>
               <p>
-                KVKK'nın 11. maddesi uyarınca; kişisel verilerinizin işlenip işlenmediğini öğrenme, işlenmişse buna ilişkin bilgi talep etme, işlenme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme, yurt içinde veya yurt dışında aktarıldığı üçüncü kişileri bilme, eksik veya yanlış işlenmiş olması hâlinde düzeltilmesini isteme, silinmesini veya yok edilmesini isteme, bu işlemlerin verilerin aktarıldığı üçüncü kişilere bildirilmesini isteme, münhasıran otomatik sistemlerle analiz edilmesi suretiyle aleyhinize bir sonucun ortaya çıkmasına itiraz etme ve kanuna aykırı işleme sebebiyle zarara uğramanız hâlinde zararın giderilmesini talep etme haklarına sahipsiniz.
+                6698 sayılı KVKK'nın 11. maddesi uyarınca; kişisel verilerinizin işlenip işlenmediğini öğrenme, işlenmişse buna ilişkin bilgi talep etme, işlenme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme, yurt içinde veya yurt dışında aktarıldığı üçüncü kişileri bilme, eksik veya yanlış işlenmiş olması hâlinde düzeltilmesini isteme, silinmesini veya yok edilmesini isteme, bu işlemlerin verilerin aktarıldığı üçüncü kişilere bildirilmesini isteme, münhasıran otomatik sistemlerle analiz edilmesi suretiyle aleyhinize bir sonucun ortaya çıkmasına itiraz etme ve kanuna aykırı işleme sebebiyle zarara uğramanız hâlinde zararın giderilmesini talep etme haklarına sahipsiniz.
               </p>
             </section>
 
@@ -103,7 +97,7 @@ export default function KVKK() {
                 9. Başvuru
               </h2>
               <p>
-                Haklarınıza ilişkin taleplerinizi, kimliğinizi tevsik edici bilgilerle birlikte Sultan Selim Mah. Sultan Selim Cad. No: 14/A, 34415 Kağıthane / İstanbul adresine yazılı olarak iletebilir veya +90 545 614 09 80 numaralı hattımızdan bize ulaşabilirsiniz. Başvurunuz en geç 30 gün içinde sonuçlandırılır.
+                Haklarınıza ilişkin taleplerinizi, kimliğinizi tevsik edici bilgilerle birlikte Çağlayan, Vatan Cd. No:55/C, 34403 Kağıthane/İstanbul adresine yazılı olarak iletebilir, kuyumculukaltincag@gmail.com adresine e-posta gönderebilir veya (0212) 232 22 12 numaralı hattımızdan bize ulaşabilirsiniz. Başvurunuz en geç 30 gün içinde sonuçlandırılır.
               </p>
             </section>
 

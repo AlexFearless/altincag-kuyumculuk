@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Hizmet Şartları | Ömer Has Kuyumculuk',
+  title: 'Hizmet Şartları | AltınÇağ Kuyumculuk',
 };
 
 export default function HizmetSartlari() {
@@ -17,13 +17,13 @@ export default function HizmetSartlari() {
                 1. Erişim ve Hesap
               </h2>
               <p>
-                Reşit yaşta olmanız ve hesap güvenliğinizden siz sorumlusunuz.
+                Bu şartları kabul ederek reşit olduğunuzu beyan edersiniz. Hesap güvenliğinizden siz sorumlusunuz.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
-                2. Ürünlerimiz
+                2. Ürünler
               </h2>
               <p>
                 Ürün renk ve görünümleri ekran ayarlarına göre farklılık gösterebilir. Fiyatlar önceden haber verilmeden değiştirilebilir.
@@ -35,16 +35,16 @@ export default function HizmetSartlari() {
                 3. Siparişler
               </h2>
               <p>
-                Siparişler banka onayı ve ödeme alındıktan sonra kabul edilir. Sipariş kabul edilmedikçe iptal talepleri karşılanamayabilir.
+                Sipariş, ödeme alındıktan sonra kabul edilir. Stokta olmayan ürünler için 7-30 gün bekleme süresi olabilir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
-                4. Fiyatlar ve Faturalandırma
+                4. Fiyatlar
               </h2>
               <p>
-                Fiyatlara kargo dahil değildir. Tüm vergiler müşteriye aittir. Fiyatlar değişikliğe tabidir.
+                Belirtilen fiyatlara kargo dahil değildir. 6502 sayılı TKHK kapsamında tüketici bilgilendirmesi fiyat onayından önce yapılır.
               </p>
             </section>
 
@@ -53,7 +53,7 @@ export default function HizmetSartlari() {
                 5. Kargo ve Teslimat
               </h2>
               <p>
-                Sadece İstanbul içi kargo yapılmaktadır. Kargo gecikmelerinden firmamız sorumlu değildir. Ürün kargoya verildiğinde SMS ile bilgilendirme yapılır. Stokta olmayan ürünler için 7-30 gün bekleme süresi olabilir. Bayram ve resmi tatillerde teslimat yapılmaz.
+                Sadece İstanbul içine kargo yapılmaktadır. Teslimat süreleri tahminidir, garanti edilmez. Kargo firması tarafından SMS ile bilgilendirme yapılır.
               </p>
             </section>
 
@@ -62,7 +62,7 @@ export default function HizmetSartlari() {
                 6. Fikri Mülkiyet
               </h2>
               <p>
-                Tüm içerik Ömer Has Kuyumculuk'a aittir. İzinsiz kullanılamaz.
+                Tüm içerik AltınÇağ Kuyumculuk'a aittir. 5846 sayılı Fikir ve Sanat Eserleri Kanunu kapsamında korunur. İzinsiz kullanılamaz.
               </p>
             </section>
 
@@ -77,16 +77,16 @@ export default function HizmetSartlari() {
 
             <section>
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
-                8. Gizlilik Politikası
+                8. Gizlilik
               </h2>
               <p>
-                Kişisel veriler Gizlilik Politikamıza tabidir.
+                Kişisel verileriniz 6698 sayılı KVKK kapsamında işlenmektedir. Detaylı bilgi için Gizlilik Politikamızı inceleyiniz.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
-                9. Hatalar ve Eksiklikler
+                9. Hatalar
               </h2>
               <p>
                 Bilgi hatalarını düzeltme ve siparişleri iptal etme hakkımız saklıdır.
@@ -95,7 +95,7 @@ export default function HizmetSartlari() {
 
             <section>
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
-                10. Yasaklı Kullanımlar
+                10. Yasaklı Kullanım
               </h2>
               <p>
                 Yasadışı amaçlarla kullanılamaz.
@@ -116,7 +116,7 @@ export default function HizmetSartlari() {
                 12. Garantilerin Reddi
               </h2>
               <p>
-                Ürünler "olduğu gibi" sunulur. Ticari elverişlilik garantisi verilmez.
+                Ürünler 6502 sayılı TKHK ve ilgili mevzuat kapsamında sunulur. Ticari elverişlilik garantisi verilmez.
               </p>
             </section>
 
@@ -125,7 +125,7 @@ export default function HizmetSartlari() {
                 13. Sorumluluk
               </h2>
               <p>
-                Doğrudan veya dolaylı zararlardan sorumlu değiliz.
+                6098 sayılı Türk Borçlar Kanunu ve 6502 sayılı Tüketici Haklarının Korunması Hakkında Kanun hükümleri saklıdır. Doğrudan veya dolaylı zararlardan sorumluluğumuz yasal sınırlar dahilindedir.
               </p>
             </section>
 
@@ -134,7 +134,7 @@ export default function HizmetSartlari() {
                 14. Uygulanacak Hukuk
               </h2>
               <p>
-                Türkiye Cumhuriyeti kanunlarına tabidir.
+                İşbu sözleşmeye 6098 sayılı Türk Borçlar Kanunu ve 6502 sayılı Tüketici Haklarının Korunması Hakkında Kanun uygulanır. Uyuşmazlıklarda İstanbul mahkemeleri ve icra daireleri yetkilidir.
               </p>
             </section>
 
@@ -143,7 +143,7 @@ export default function HizmetSartlari() {
                 15. Değişiklikler
               </h2>
               <p>
-                Şartları istediğiniz zaman inceleyebilirsiniz. Değişiklikler sitede yayınlanır.
+                Şartları istediğiniz zaman inceleyebilirsiniz. Değişiklikler sitede yayınlanır, yayınlandığı tarihte yürürlüğe girer.
               </p>
             </section>
 
@@ -152,10 +152,10 @@ export default function HizmetSartlari() {
                 İletişim
               </h2>
               <p>
-                omerhaskuyumculuk@gmail.com
-              </p>
-              <p>
-                Sultan Selim Mah. Sultan Selim Cad. No: 14/A, 34415 Kağıthane / İstanbul
+                AltınÇağ Kuyumculuk<br />
+                Çağlayan, Vatan Cd. No:55/C, 34403 Kağıthane/İstanbul<br />
+                (0212) 232 22 12<br />
+                kuyumculukaltincag@gmail.com
               </p>
             </section>
           </div>

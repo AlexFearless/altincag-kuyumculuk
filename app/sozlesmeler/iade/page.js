@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Para İade Politikası | Ömer Has Kuyumculuk',
+  title: 'İade ve Değişim Politikası | AltınÇağ Kuyumculuk',
 };
 
 export default function ReturnPolicy() {
@@ -8,67 +8,76 @@ export default function ReturnPolicy() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg p-8 lg:p-12 shadow-sm">
           <h1 className="font-serif text-3xl font-bold text-earth-800 mb-8">
-            Para İade Politikası
+            İade ve Değişim Politikası
           </h1>
 
           <div className="prose prose-earth max-w-none space-y-6 text-earth-600">
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                14 Günlük Değişim Politikası
+                Cayma Hakkı (6502 sayılı TKHK md. 48)
               </h2>
               <p>
-                Ürününüzü aldıktan sonra 14 gün içinde değişim talebinde bulunabilirsiniz.
+                Mesafeli sözleşmelerde tüketici, ürünün kendisine teslim tarihinden itibaren 14 gün içinde herhangi bir gerekçe göstermeksizin cayma hakkına sahiptir. Cayma bildiriminin yazılı olarak (e-posta, WhatsApp) yapılması yeterlidir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Değişim Koşulları
+                Cayma Koşulları
               </h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>Ürününüzün giyilmemiş veya kullanılmamış olması</li>
-                <li>Etiketli ve orijinal ambalajında olması</li>
-                <li>Makbuz veya satın alma belgesine sahip olmanız</li>
+                <li>Ürünün kullanılmamış, etiketli ve orijinal ambalajında olması gerekir</li>
+                <li><strong>Yüzük bedeninden kaynaklanan problemler cayma hakkı kapsamı dışındadır</strong> (kişiselleştirilmiş ürün istisnası)</li>
+                <li>Cayma hakkının kullanılması halinde, satın alma bedeli 10 iş günü içinde iade edilir</li>
               </ul>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Değişim Başvurusu
+                Para İadesi
               </h2>
               <p>
-                omerhaskuyumculuk@gmail.com adresinden bizimle iletişime geçebilirsiniz.
+                Cayma bildiriminizin ulaşmasını takip eden 10 iş günü içinde, ürünün SATIN ALMA bedeli orijinal ödeme yönteminize iade edilir. Kargo ücreti müşteriye aittir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                İstisnalar / İade Edilemeyen Ürünler
+                Değişim
               </h2>
+              <p>
+                Değişim yapılmak istenirse, ilk ürün iade edilip yeni ürün için ayrı bir sipariş verilmesi gerekir. En hızlı yol budur.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
+                Hasarlı veya Kusurlu Ürünler
+              </h2>
+              <p>
+                Ürünü teslim aldığınızda kontrol ediniz. Kusurlu veya hasarlı ürünleri 48 saat içinde kuyumculukaltincag@gmail.com adresine bildiriniz. TKHK kapsamında ayıplı mal sorumluluğu saklıdır.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
+                Cayma Hakkı Dışında Kalan Durumlar
+              </h2>
+              <p>
+                Aşağıdaki ürünler kişisel bakım, hijyen veya kişiselleştirme niteliğinde olduğundan cayma hakkı kapsamı dışındadır:
+              </p>
               <ul className="list-disc pl-6 space-y-2">
-                <li><strong>Yüzük bedeninden kaynaklanan problemler iade kapsamı dışındadır.</strong> Lütfen bedeninizi doğru seçiniz.</li>
-                <li>Kişisel bakım ürünleri</li>
-                <li>Tehlikeli maddeler</li>
-                <li>İndirimdeki ürünler</li>
-                <li>Hediye kartları</li>
+                <li>Müşteri ölçüsüne göre üretilmiş yüzükler (beden hatası hariç)</li>
+                <li>Kullanılmış veya etiketi çıkarılmış ürünler</li>
               </ul>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Hasarlı Ürünler
+                Süre
               </h2>
               <p>
-                Siparişinizi teslim aldığınızda inceleyin. Ürün kusurlu veya hasarlıysa hemen bizimle iletişime geçin.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Para İadeleri
-              </h2>
-              <p>
-                İadeniz kabul edildikten sonra 10 iş günü içinde orijinal ödeme yönteminize iade yapılır. 15 iş gününü aşan iadeler için omerhaskuyumculuk@gmail.com adresinden iletişime geçin.
+                Cayma hakkı 14 gündür. Bu süre, ürünün tüketiciye veya belirttiği adresteki üçüncü kişiye teslim tarihinden itibaren başlar.
               </p>
             </section>
 
@@ -77,9 +86,10 @@ export default function ReturnPolicy() {
                 İletişim
               </h2>
               <p>
-                omerhaskuyumculuk@gmail.com<br />
-                +90 545 614 09 80<br />
-                Sultan Selim Mah. Sultan Selim Cad. No: 14/A, 34415 Kağıthane / İstanbul
+                AltınÇağ Kuyumculuk<br />
+                Çağlayan, Vatan Cd. No:55/C, 34403 Kağıthane/İstanbul<br />
+                (0212) 232 22 12<br />
+                kuyumculukaltincag@gmail.com
               </p>
             </section>
           </div>

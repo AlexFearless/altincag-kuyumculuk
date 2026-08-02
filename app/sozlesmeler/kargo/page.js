@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Kargo Politikası | Ömer Has Kuyumculuk',
+  title: 'Kargo Politikası | AltınÇağ Kuyumculuk',
 };
 
 export default function ShippingPolicy() {
@@ -23,10 +23,19 @@ export default function ShippingPolicy() {
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
+                Anlaşmalı Kargo Firması
+              </h2>
+              <p>
+                Siparişleriniz MNG Kargo ile gönderilmektedir. Kargo takip numaranız sipariş onay e-postası ve SMS ile bildirilir.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
                 Kargo Süreci
               </h2>
               <p>
-                Siparişleriniz, banka onayı alındıktan sonra vermiş olduğunuz İstanbul adresine iletilmek üzere kargoya teslim edilir. Teslimat adresinin kargo şubesine uzaklığına göre kargo şirketi 1-3 gün içerisinde siparişinizi size ulaştıracaktır.
+                Siparişleriniz, banka onayı alındıktan sonra İstanbul içindeki adresinize kargoya verilir. Teslimat, adrese göre 1-3 iş günü içinde gerçekleşir.
               </p>
             </section>
 
@@ -44,7 +53,7 @@ export default function ShippingPolicy() {
                 Adres Sorumluluğu
               </h2>
               <p>
-                Adresin tarafımıza yanlış iletilmesi halinde, ürünün teslimi ya da teslimde yaşanacak gecikmelerden firmamız sorumlu değildir.
+                Adresin tarafımıza yanlış iletilmesi halinde, ürünün teslimi ya da teslimde yaşanacak gecikmelerden firmamız sorumlu değildir. Üyelik bilgilerinizin doğru ve güncel olması önemlidir.
               </p>
             </section>
 
@@ -53,7 +62,7 @@ export default function ShippingPolicy() {
                 Kargo Takibi
               </h2>
               <p>
-                Ürününüz kargo şirketine teslim edildiğinde, kargo firması tarafından size ürün takibi için SMS ile bilgilendirme yapılacaktır.
+                Ürününüz kargo şirketine teslim edildiğinde SMS ile bilgilendirme yapılır. Takip numaranızla kargo durumunu sorgulayabilirsiniz.
               </p>
             </section>
 
@@ -62,7 +71,7 @@ export default function ShippingPolicy() {
                 Stok Tükenmesi
               </h2>
               <p>
-                Aynı ürünün aynı anda birden fazla kullanıcı tarafından satın alınması ve stokların tükenmesi söz konusu olabilir. Bu durumda, stoğumuzda kalmamış ürünler için en az 7, en fazla 30 günlük bekleme süresi geçerlidir. Ürün bu süre içerisinde temin edilemezse, yapılan ödeme müşteriye iade edilir.
+                Aynı anda birden fazla kullanıcı tarafından satın alınma durumunda stok tükenmesi oluşabilir. Bu durumda en az 7, en fazla 30 gün bekleme süresi geçerlidir. Ürün temin edilemezse ödeme iade edilir.
               </p>
             </section>
 
@@ -71,7 +80,7 @@ export default function ShippingPolicy() {
                 Bayram ve Tatil Günleri
               </h2>
               <p>
-                Bayram ve resmi tatil günlerinde teslimat yapılmamaktadır. Bayram dönemlerindeki yoğunluk nedeniyle yaşanabilecek teslimat gecikmelerinden firmamız sorumlu tutulamaz.
+                Bayram ve resmi tatil günlerinde teslimat yapılmamaktadır. Yoğunluk dönemlerinde gecikmeler yaşanabilir.
               </p>
             </section>
 
@@ -80,11 +89,10 @@ export default function ShippingPolicy() {
                 İletişim
               </h2>
               <p>
-                omerhaskuyumculuk@gmail.com
-                <br />
-                +90 545 614 09 80
-                <br />
-                Sultan Selim Mah. Sultan Selim Cad. No: 14/A, 34415 Kağıthane / İstanbul
+                AltınÇağ Kuyumculuk<br />
+                Çağlayan, Vatan Cd. No:55/C, 34403 Kağıthane/İstanbul<br />
+                (0212) 232 22 12<br />
+                kuyumculukaltincag@gmail.com
               </p>
             </section>
           </div>

@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Mesafeli Satış Sözleşmesi | Ömer Has Kuyumculuk',
+  title: 'Mesafeli Satış Sözleşmesi | AltınÇağ Kuyumculuk',
 };
 
 export default function DistanceSalesContract() {
@@ -14,70 +14,70 @@ export default function DistanceSalesContract() {
           <div className="prose prose-earth max-w-none space-y-6 text-earth-600">
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Taraflar
+                1. Taraflar
               </h2>
               <p>
-                Bu sözleşme, Ömer Has Kuyumculuk (satıcı) ile web sitesinden alışveriş yapan müşteri arasında düzenlenmiştir.
+                Bu sözleşme, AltınÇağ Kuyumculuk (satıcı) ile web sitesinden alışveriş yapan müşteri arasında düzenlenmiştir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Konu
+                2. Konu
               </h2>
               <p>
-                İşbu sözleşmenin konusu, müşterinin www.omerhaskuyumculuk.com web sitesinden satın aldığı ürünlerin satışı ve teslimi ile ilgili hak ve yükümlülüklerin düzenlenmesidir.
+                İşbu sözleşmenin konusu, www.altincagkuyumculuk.com web sitesinden satın alınan ürünlerin satışı ve teslimi ile ilgili hak ve yükümlülüklerin düzenlenmesidir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Ürün Bilgileri
+                3. Ürün Bilgileri
               </h2>
               <p>
-                Ürünlerin temel özellikleri, fiyatları ve stok durumu web sitesinde belirtilmiştir. Ürün görselleri temsil amaçlıdır, renk farklılıkları olabilir.
+                Ürünlerin temel özellikleri, fiyatları ve stok durumu web sitesinde belirtilmiştir. Ürün görselleri temsil amaçlıdır.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Fiyatlar
+                4. Fiyatlar
               </h2>
               <p>
-                Ürün fiyatları KDV dahildir. Kargo ücreti fiyatlara dahil değildir. Fiyatlar önceden haber verilmeden değiştirilebilir.
+                Ürün fiyatları KDV dahildir. Kargo ücreti fiyatlara dahil değildir. 6502 sayılı TKHK kapsamında fiyat bilgisi sipariş onayından önce müşteriye gösterilir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Sipariş ve Ödeme
+                5. Sipariş ve Ödeme
               </h2>
               <p>
-                Müşteri, sipariş verdiği anda bedeli tam olarak ödemiş olmalıdır. Havale ile ödemelerde, banka onayı alındıktan sonra sipariş hazırlanmaya başlanır.
+                Müşteri, sipariş verdiği anda bedeli tam olarak ödemiş olmalıdır. Havale ile ödemelerde banka onayı alındıktan sonra sipariş hazırlanmaya başlanır.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Kargo ve Teslimat
+                6. Kargo ve Teslimat
               </h2>
               <p>
-                Sadece İstanbul içine kargo yapılmaktadır. Kargo firması tarafından 1-3 iş günü içinde teslim edilir. Stokta olmayan ürünler için 7-30 gün üretim süresi olabilir.
+                Sadece İstanbul içine kargo yapılmaktadır. MNG Kargo ile 1-3 iş günü içinde teslim edilir. Stokta olmayan ürünler için 7-30 gün üretim süresi olabilir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Cayma Hakkı (14 Gün)
+                7. Cayma Hakkı (6502 sayılı TKHK md. 48)
               </h2>
               <p>
-                Mesafeli sözleşmelerde müşteri, ürünü teslim aldığı tarihten itibaren 14 gün içinde cayma hakkına sahiptir. Cayma bildirimi yazılı olarak yapılmalıdır.
+                Tüketici, ürünü teslim aldığı tarihten itibaren 14 gün içinde herhangi bir gerekçe göstermeksizin cayma hakkına sahiptir. Cayma bildirimi yazılı olarak yapılmalıdır. Cayma halinde 10 iş günü içinde para iadesi yapılır.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Cayma Koşulları
+                8. Cayma Koşulları
               </h2>
               <ul className="list-disc pl-5 space-y-2">
                 <li>Ürünün kullanılmamış, etiketli ve orijinal ambalajında olması gerekir</li>
@@ -88,32 +88,33 @@ export default function DistanceSalesContract() {
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Sorumluluk
+                9. Sorumluluk
               </h2>
               <ul className="list-disc pl-5 space-y-2">
                 <li>Ürünün kargo firmasına teslimine kadar olan sorumluluk satıcıya, sonrasında müşteriye aittir</li>
                 <li>Adres hatalarından müşteri sorumludur</li>
-                <li>Ödemeler lisanslı ödeme kuruluşları üzerinden gerçekleştirilir, kredi kartı bilgileri tarafımızca saklanmaz</li>
+                <li>Ödemeler lisanslı ödeme kuruluşları üzerinden gerçekleştirilir, kredi kartı bilgileri saklanmaz</li>
               </ul>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                Uyuşmazlıklar
+                10. Uyuşmazlıklar
               </h2>
               <p>
-                İşbu sözleşmeye Türk Hukuku uygulanır. Uyuşmazlıklarda İstanbul mahkemeleri yetkilidir.
+                İşbu sözleşmeye 6098 sayılı Türk Borçlar Kanunu ve 6502 sayılı Tüketici Haklarının Korunması Hakkında Kanun uygulanır. Uyuşmazlıklarda İstanbul mahkemeleri ve icra daireleri yetkilidir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-xl font-semibold text-earth-800 mb-3">
-                İletişim
+                11. İletişim
               </h2>
               <p>
-                omerhaskuyumculuk@gmail.com<br />
-                +90 545 614 09 80<br />
-                Sultan Selim Mah. Sultan Selim Cad. No: 14/A, 34415 Kağıthane / İstanbul
+                AltınÇağ Kuyumculuk<br />
+                Çağlayan, Vatan Cd. No:55/C, 34403 Kağıthane/İstanbul<br />
+                (0212) 232 22 12<br />
+                kuyumculukaltincag@gmail.com
               </p>
             </section>
           </div>

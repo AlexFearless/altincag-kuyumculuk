@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Gizlilik Politikası | Ömer Has Kuyumculuk',
+  title: 'Gizlilik Politikası | AltınÇağ Kuyumculuk',
 };
 
 export default function GizlilikPolitikasi() {
@@ -14,61 +14,80 @@ export default function GizlilikPolitikasi() {
           <div className="prose prose-earth max-w-none space-y-6 text-earth-600 text-sm">
             <section>
               <p>
-                Ömer Has Kuyumculuk, siz müşterilere kişisel bir alışveriş deneyimi sunmak amacıyla bu web sitesini işletmektedir. İşbu Gizlilik Politikası, web sitemizi ziyaret ettiğinizde, kullandığınızda veya bizimle iletişime geçtiğinizde kişisel bilgilerinizi nasıl topladığımızı, kullandığımızı ve paylaştığımızı açıklamaktadır.
+                AltınÇağ Kuyumculuk olarak, kişisel verilerinizin güvenliği konusunda hassasiyet gösteriyoruz. İşbu Gizlilik Politikası, web sitemizi ziyaret ettiğinizde veya hizmetlerimizi kullandığınızda kişisel bilgilerinizi nasıl topladığımızı, kullandığımızı ve koruduğumuzu açıklamaktadır.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
-                Topladığımız Kişisel Bilgiler
+                Kişisel Bilgi Toplama
               </h2>
               <ul className="list-disc pl-6 space-y-1">
-                <li>İletişim bilgileri: ad, adres, fatura adresi, kargo adresi, telefon numarası, e-posta adresi</li>
-                <li>Finansal bilgiler: kredi kartı bilgileri (tarafımızca görülmez veya saklanmaz), ödeme işlem detayları</li>
-                <li>Hesap bilgileri: kullanıcı adı, parola, tercihler</li>
-                <li>İşlem bilgileri: sepete eklediğiniz ürünler, satın alımlar, iade ve değişim kayıtları</li>
-                <li>Cihaz bilgileri: IP adresi, tarayıcı bilgisi, çerez kayıtları</li>
+                <li>İletişim bilgileri: ad, soyad, adres, telefon numarası, e-posta adresi</li>
+                <li>İşlem bilgileri: sipariş geçmişi, sepet işlemleri, iade ve değişim kayıtları</li>
+                <li>Güvenlik bilgileri: IP adresi, çerez kayıtları, tarayıcı bilgisi</li>
+                <li>Kredi kartı bilgileriniz tarafımızca saklanmaz; ödemeler lisanslı ödeme kuruluşları üzerinden gerçekleştirilir</li>
               </ul>
             </section>
 
             <section>
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
-                Kişisel Bilgileri Nasıl Kullanırız?
+                Bilgilerin Kullanım Amacı
               </h2>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Siparişlerinizi oluşturmak, hazırlamak ve teslim etmek</li>
-                <li>Ödeme işlemlerini gerçekleştirmek</li>
-                <li>İade ve değişim taleplerini karşılamak</li>
-                <li>Müşteri desteği sağlamak</li>
-                <li>Yasal yükümlülüklerimizi yerine getirmek</li>
-                <li>Açık rızanız bulunması halinde kampanya iletileri göndermek</li>
+                <li>Sipariş süreçlerinin yürütülmesi</li>
+                <li>Yasal yükümlülüklerin yerine getirilmesi (6098 sayılı TBK, 6502 sayılı TKHK, Vergi Usul Kanunu)</li>
+                <li>Müşteri desteği sağlanması</li>
+                <li>Açık rızanız olması halinde kampanya bilgilendirmeleri</li>
               </ul>
             </section>
 
             <section>
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
-                Verilerin Aktarılması
+                Üçüncü Taraflara Aktarım
               </h2>
               <p>
-                Kişisel verileriniz yalnızca hizmetin sunulabilmesi için gerekli olduğu ölçüde kargo firmaları, ödeme kuruluşları ve yetkili kamu kurumlarına aktarılabilir. Verileriniz pazarlama amacıyla üçüncü kişilere satılmaz.
+                Kişisel verileriniz yalnızca yasal zorunluluklar ve hizmet sunumu kapsamında kargo firmaları, ödeme kuruluşları ve yetkili kamu kurumlarıyla paylaşılabilir. Verileriniz satılmaz.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
-                Verilerin Saklanması
+                Veri Saklama
               </h2>
               <p>
-                Verileriniz, işleme amacının gerektirdiği süre boyunca ve yasal saklama süreleri (ticari ve vergisel kayıtlar için 10 yıl) sona erene kadar muhafaza edilir.
+                Sipariş ve fatura kayıtları 10 yıl, diğer veriler hizmet süresince saklanır. Veri minimizasyonu ilkesine uygun hareket edilir.
               </p>
             </section>
 
             <section>
               <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
-                Haklarınız
+                Haklarınız (6698 sayılı KVKK md. 11)
+              </h2>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Verilerinizin işlenip işlenmediğini öğrenme</li>
+                <li>Eksik veya yanlış işlenmiş verilerin düzeltilmesini isteme</li>
+                <li>Verilerinizin silinmesini veya yok edilmesini isteme</li>
+                <li>İşlemlerin aktarıldığı üçüncü taraflara bildirilmesini isteme</li>
+                <li>Otomatik analiz sonucu aleyhe çıkan sonuca itiraz etme</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
+                Çerezler
               </h2>
               <p>
-                KVKK'nın 11. maddesi uyarınca kişisel verilerinizin işlenip işlenmediğini öğrenme, düzeltilmesini veya silinmesini isteme haklarına sahipsiniz.
+                Zorunlu çerezler (sepet, oturum) ve analitik çerezler kullanılmaktadır. Tarayıcı ayarlarından yönetebilirsiniz.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-lg font-semibold text-earth-800 mb-3">
+                Güvenlik
+              </h2>
+              <p>
+                Kişisel verileriniz SSL ile şifrelenerek iletilir. Verileriniz güvenli sunucularda saklanır.
               </p>
             </section>
 
@@ -77,9 +96,9 @@ export default function GizlilikPolitikasi() {
                 İletişim
               </h2>
               <p>
-                Sultan Selim Mah. Sultan Selim Cad. No: 14/A, 34415 Kağıthane / İstanbul<br />
-                +90 545 614 09 80<br />
-                omerhaskuyumculuk@gmail.com
+                Çağlayan, Vatan Cd. No:55/C, 34403 Kağıthane/İstanbul<br />
+                (0212) 232 22 12<br />
+                kuyumculukaltincag@gmail.com
               </p>
             </section>
 
