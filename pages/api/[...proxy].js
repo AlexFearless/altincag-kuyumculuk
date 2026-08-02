@@ -1,6 +1,8 @@
+import { withAdminRole } from '@/lib/auth';
+
 const WORKER_URL = 'http://localhost:8787';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const path = req.url;
   const url = `${WORKER_URL}${path}`;
 
@@ -39,6 +41,8 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withAdminRole()(handler);
 
 export const config = {
   api: { bodyParser: true },

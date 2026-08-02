@@ -70,11 +70,11 @@ export default async function handler(req, res) {
     if (error) {
       console.error('[profile] update error:', error);
       if (error.code === '23505') return res.status(400).json({ error: 'Bu e-posta adresi zaten kullanımda' });
-      return res.status(500).json({ error: 'Profil güncellenemedi: ' + (error.message || error.code || 'bilinmeyen hata') });
+      return res.status(500).json({ error: 'Profil güncellenemedi' });
     }
     if (!users || users.length === 0) {
       console.error('[profile] update affected 0 rows. table:', table, 'id:', decoded.id, 'updateData:', JSON.stringify(updateData));
-      return res.status(500).json({ error: 'Profil bulunamadı veya güncellenemedi. Tablo: ' + table });
+      return res.status(500).json({ error: 'Profil bulunamadı veya güncellenemedi' });
     }
     const user = users[0];
 

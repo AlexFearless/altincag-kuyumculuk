@@ -18,13 +18,13 @@ async function handler(req, res) {
     const results = {};
 
     const { error: rlErr } = await db.from('rate_limits').select('id').limit(1);
-    results.rate_limits_exists = !rlErr;
+    results.rate_limits_ok = !rlErr;
 
     const { error: tbErr } = await db.from('token_blacklist').select('id').limit(1);
-    results.token_blacklist_exists = !tbErr;
+    results.token_blacklist_ok = !tbErr;
 
     const { error: rtErr } = await db.from('refresh_tokens').select('id').limit(1);
-    results.refresh_tokens_exists = !rtErr;
+    results.refresh_tokens_ok = !rtErr;
 
     res.status(200).json(results);
   } catch (error) {

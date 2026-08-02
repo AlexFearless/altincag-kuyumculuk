@@ -111,20 +111,39 @@ function ensureCsrfCookie(response) {
   return response;
 }
 
-function decodeJwtPayload(token) {
+async function verifyJwtSignature(token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+
   try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const [headerB64, payloadB64, signatureB64] = parts;
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(JWT_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    const sig = Uint8Array.from(atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+
+    const valid = await crypto.subtle.verify('HMAC', key, sig, data);
+    if (!valid) return null;
+
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+
     return payload;
   } catch {
     return null;
   }
 }
 
-function isAdminRequest(token) {
+async function isAdminRequest(token) {
   if (!token || typeof token !== 'string') return false;
-  const payload = decodeJwtPayload(token);
+  const payload = await verifyJwtSignature(token);
   if (!payload) return false;
   if (payload.userType !== 'admin') return false;
   return true;
@@ -147,7 +166,7 @@ export async function middleware(request) {
     const cookieHeader = request.headers.get('cookie') || '';
     const cookies = parseCookies(cookieHeader);
     const token = cookies.access_token;
-    if (!isAdminRequest(token)) {
+    if (!await isAdminRequest(token)) {
       const url = request.nextUrl.clone();
       url.pathname = '/admin/login';
       return NextResponse.redirect(url);
@@ -159,7 +178,7 @@ export async function middleware(request) {
       const cookieHeader = request.headers.get('cookie') || '';
       const cookies = parseCookies(cookieHeader);
       const token = cookies.access_token;
-      if (!isAdminRequest(token)) {
+      if (!await isAdminRequest(token)) {
         return NextResponse.json({ error: 'Yetkilendirme başarısız' }, { status: 401 });
       }
     }

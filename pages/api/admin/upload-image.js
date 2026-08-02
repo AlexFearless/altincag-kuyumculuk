@@ -9,6 +9,15 @@ const BUCKET = 'product-images';
 
 function genId() { return crypto.randomBytes(12).toString('hex'); }
 
+function isValidImageBuffer(buffer) {
+  if (buffer.length < 12) return false;
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return true;
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return true;
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) return true;
+  return false;
+}
+
 async function handler(req, res) {
   if (!(await uploadLimiter(req, res))) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -53,6 +62,9 @@ async function handler(req, res) {
       const ext = match[1] === 'png' ? 'png' : match[1] === 'webp' ? 'webp' : 'jpeg';
       const contentType = `image/${ext}`;
       const buffer = Buffer.from(match[2], 'base64');
+
+      if (buffer.length > 5 * 1024 * 1024) continue;
+      if (!isValidImageBuffer(buffer)) continue;
 
       const path = `${productId || 'temp'}/${genId()}.${ext}`;
       const { error: uploadError } = await supabase.storage

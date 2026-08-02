@@ -2,7 +2,7 @@ import { getDb } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { rateLimit } from '@/lib/rateLimit';
-import { generateTokenPair, clearFailedAttempts } from '@/lib/auth';
+import { generateTokenPair, clearFailedAttempts, recordFailedAttempt } from '@/lib/auth';
 import { setTokenCookies } from '@/lib/cookies';
 import { verifyTOTP } from '@/lib/totp';
 import { getJwtSecret } from '@/lib/secrets';
@@ -54,9 +54,11 @@ export default async function handler(req, res) {
       }
 
       if (!verifyTOTP(admin.totp_secret, totpCode.trim())) {
+        await recordFailedAttempt(`admin:${decoded.email || admin.email}`);
         return res.status(401).json({ error: 'Geçersiz doğrulama kodu' });
       }
 
+      await clearFailedAttempts(`admin:${decoded.email || admin.email}`);
       await db.from('admins').update({ last_login: new Date().toISOString() }).eq('id', admin.id);
 
       const { accessToken, refreshToken, expiresIn } = await generateTokenPair(admin.id, 'admin');
@@ -97,14 +99,13 @@ export default async function handler(req, res) {
 
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
+      await recordFailedAttempt(`admin:${cleanEmail}`);
       return res.status(401).json({ error: 'Geçersiz e-posta veya şifre' });
     }
 
-    await clearFailedAttempts(`admin:${cleanEmail}`);
-
     if (admin.totp_enabled) {
       const tempToken = jwt.sign(
-        { adminId: admin.id, purpose: '2fa' },
+        { adminId: admin.id, email: cleanEmail, purpose: '2fa' },
         JWT_SECRET,
         { expiresIn: '5m', algorithm: 'HS256' }
       );
@@ -115,6 +116,7 @@ export default async function handler(req, res) {
       });
     }
 
+    await clearFailedAttempts(`admin:${cleanEmail}`);
     await db.from('admins').update({ last_login: new Date().toISOString() }).eq('id', admin.id);
 
     const { accessToken, refreshToken, expiresIn } = await generateTokenPair(admin.id, 'admin');

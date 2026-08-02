@@ -34,12 +34,12 @@ export default async function handler(req, res) {
       userId = decoded.id;
       const table = decoded.userType === 'admin' ? 'admins' : 'users';
       const { data: account, error: accountErr } = await db.from(table).select('email, is_active').eq('id', decoded.id).single();
-      if (accountErr) return res.status(500).json({ error: 'Hesap sorgulanamadı: ' + (accountErr.message || '') });
+      if (accountErr) return res.status(500).json({ error: 'Hesap sorgulanamadı' });
       if (!account) return res.status(401).json({ error: 'Hesap bulunamadı' });
       if (!account.is_active) return res.status(401).json({ error: 'Hesap pasif' });
       userEmail = account.email;
     } catch (e) {
-      return res.status(401).json({ error: 'Geçersiz oturum: ' + (e.message || 'bilinmeyen hata') });
+      return res.status(401).json({ error: 'Geçersiz oturum' });
     }
 
     if (req.method === 'GET') {

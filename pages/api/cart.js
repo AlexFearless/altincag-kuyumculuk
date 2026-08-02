@@ -132,20 +132,29 @@ export default async function handler(req, res) {
           .single();
 
         if (existingItem) {
+          const newQty = Math.min(existingItem.quantity + qty, 100);
           await db
             .from('cart_items')
-            .update({ quantity: Math.min(existingItem.quantity + qty, 100) })
+            .update({ quantity: newQty })
             .eq('id', existingItem.id);
         } else {
+          await db.from('cart_items').insert({ cart_id: cart.id, product_id: productId, quantity: qty });
+
           const { count } = await db
             .from('cart_items')
             .select('*', { count: 'exact', head: true })
             .eq('cart_id', cart.id);
 
-          if ((count || 0) >= 50) {
+          if ((count || 0) > 50) {
+            const { data: lastItem } = await db
+              .from('cart_items')
+              .select('id')
+              .eq('cart_id', cart.id)
+              .eq('product_id', productId)
+              .single();
+            if (lastItem) await db.from('cart_items').delete().eq('id', lastItem.id);
             return res.status(400).json({ error: 'Sepet çok dolu, en fazla 50 ürün ekleyebilirsiniz' });
           }
-          await db.from('cart_items').insert({ cart_id: cart.id, product_id: productId, quantity: qty });
         }
 
         const items = await getCartWithProducts(db, guestId);

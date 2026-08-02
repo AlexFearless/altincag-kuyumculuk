@@ -235,7 +235,7 @@ async function handlePatch(db, req, res) {
 
       if (updateErr) {
         console.error('[PATCH] order update error:', updateErr);
-        return res.status(500).json({ error: 'Ödeme durumu güncellenemedi: ' + (updateErr.message || updateErr.code) });
+        return res.status(500).json({ error: 'Ödeme durumu güncellenemedi' });
       }
       if (!updated) {
         console.error('[PATCH] order update returned null. id:', id, 'updateData:', updateData);

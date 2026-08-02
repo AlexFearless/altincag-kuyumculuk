@@ -19,7 +19,7 @@ async function handler(req, res) {
 
     if (insertErr) {
       console.error('[column-info] insert test failed:', insertErr);
-      return res.status(200).json({ karat_8_supported: false, error: insertErr.message, code: insertErr.code, details: insertErr.details, hint: insertErr.hint });
+      return res.status(200).json({ karat_8_supported: false });
     }
 
     await db.from('products').delete().eq('id', testInsert.id);
