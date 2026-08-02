@@ -1,11 +1,10 @@
 import { getDb } from '@/lib/supabase';
 import { withAdminRole } from '@/lib/auth';
 import { rateLimit } from '@/lib/rateLimit';
+import { uploadToCloudinary, isCloudinaryConfigured } from '@/lib/cloudinary';
 import crypto from 'crypto';
 
 const uploadLimiter = rateLimit({ windowMs: 60000, max: 30, message: 'Çok fazla yükleme. 1 dakika bekleyin.' });
-
-const BUCKET = 'product-images';
 
 function genId() { return crypto.randomBytes(12).toString('hex'); }
 
@@ -16,6 +15,29 @@ function isValidImageBuffer(buffer) {
   if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
       buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) return true;
   return false;
+}
+
+async function uploadToSupabaseStorage(db, buffer, path, ext) {
+  const BUCKET = 'product-images';
+  const contentType = `image/${ext}`;
+
+  const bucketExists = await db.storage.getBucket(BUCKET).then(() => true).catch(() => false);
+  if (!bucketExists) {
+    await db.storage.createBucket(BUCKET, {
+      public: true,
+      fileSizeLimit: 5 * 1024 * 1024,
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    });
+  }
+
+  const { error: uploadError } = await db.storage
+    .from(BUCKET)
+    .upload(path, buffer, { contentType, upsert: false });
+
+  if (uploadError) throw uploadError;
+
+  const { data: urlData } = db.storage.from(BUCKET).getPublicUrl(path);
+  return urlData?.publicUrl;
 }
 
 async function handler(req, res) {
@@ -34,18 +56,9 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'En fazla 10 görsel yükleyebilirsiniz' });
     }
 
-    const supabase = db;
-
-    const bucketExists = await supabase.storage.getBucket(BUCKET).then(() => true).catch(() => false);
-    if (!bucketExists) {
-      await supabase.storage.createBucket(BUCKET, {
-        public: true,
-        fileSizeLimit: 5 * 1024 * 1024,
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-      });
-    }
-
+    const useCloudinary = isCloudinaryConfigured();
     const urls = [];
+
     for (const img of images) {
       if (typeof img !== 'string') continue;
 
@@ -60,25 +73,24 @@ async function handler(req, res) {
       if (!match) continue;
 
       const ext = match[1] === 'png' ? 'png' : match[1] === 'webp' ? 'webp' : 'jpeg';
-      const contentType = `image/${ext}`;
       const buffer = Buffer.from(match[2], 'base64');
 
       if (buffer.length > 5 * 1024 * 1024) continue;
       if (!isValidImageBuffer(buffer)) continue;
 
-      const path = `${productId || 'temp'}/${genId()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, buffer, { contentType, upsert: false });
+      const filename = `${productId || 'temp'}/${genId()}`;
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        continue;
-      }
-
-      const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      if (urlData?.publicUrl) {
-        urls.push(urlData.publicUrl);
+      try {
+        if (useCloudinary) {
+          const result = await uploadToCloudinary(buffer, 'altincag', filename);
+          if (result?.secure_url) urls.push(result.secure_url);
+        } else {
+          const path = `${filename}.${ext}`;
+          const url = await uploadToSupabaseStorage(db, buffer, path, ext);
+          if (url) urls.push(url);
+        }
+      } catch (err) {
+        console.error('Upload error:', err);
       }
     }
 
