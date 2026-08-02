@@ -316,7 +316,7 @@ async function handleDelete(db, req, res) {
     const { data: order } = await db.from('orders').select('id, order_number, order_status, payment_status, total_amount').eq('id', id).single();
     if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı' });
 
-    if (order.order_status !== 'cancelled' && (order.payment_status === 'odendi' || order.payment_status === 'paid')) {
+    if (order.payment_status === 'odendi' || order.payment_status === 'paid') {
       const { data: items } = await db.from('order_items').select('product_id, quantity').eq('order_id', id);
       for (const item of (items || [])) {
         if (item.product_id) {

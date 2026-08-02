@@ -109,16 +109,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: `"${dbProduct.name}" stokta yetersiz (mevcut: ${dbProduct.stock})` });
       }
 
-      const { error: stockErr } = await db
-        .from('products')
-        .update({ stock: dbProduct.stock - qty })
-        .eq('id', dbProduct.id)
-        .gte('stock', qty);
-
-      if (stockErr) {
-        return res.status(400).json({ error: `"${dbProduct.name}" stokta yetersiz` });
-      }
-
       let price = dbProduct.discount_type === 'real' && dbProduct.discounted_price > 0
         ? dbProduct.discounted_price
         : dbProduct.price;
