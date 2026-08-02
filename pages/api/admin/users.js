@@ -71,11 +71,6 @@ export default async function handler(req, res) {
         updateData.phone = sanitize(String(phone));
       }
       if (password !== undefined && String(password).trim()) {
-        if (!req.body.currentPassword) return res.status(400).json({ error: 'Mevcut şifrenizi girmeniz gerekli' });
-        const { data: targetUser } = await db.from('users').select('password').eq('id', id).single();
-        if (!targetUser) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
-        const currentMatch = await bcrypt.compare(String(req.body.currentPassword), targetUser.password);
-        if (!currentMatch) return res.status(403).json({ error: 'Mevcut şifre hatalı' });
         if (String(password).length < 8) return res.status(400).json({ error: 'Şifre en az 8 karakter olmalı' });
         if (!/[A-Z]/.test(String(password)) || !/[a-z]/.test(String(password)) || !/[0-9]/.test(String(password))) {
           return res.status(400).json({ error: 'Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermelidir' });
