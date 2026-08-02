@@ -74,23 +74,38 @@ export default function AdminProducts() {
     }
   };
 
-  const handleImageUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    const base64Images = [];
-
-    for (const file of files) {
+  const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = () => {
-        base64Images.push(reader.result);
-        if (base64Images.length === files.length) {
-          setFormData((prev) => ({
-            ...prev,
-            images: [...prev.images, ...base64Images],
-          }));
-        }
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let w = img.width;
+          let h = img.height;
+          if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    const compressed = [];
+    for (const file of files) {
+      const c = await compressImage(file);
+      compressed.push(c);
     }
+    setFormData((prev) => ({
+      ...prev,
+      images: [...prev.images, ...compressed],
+    }));
   };
 
   const removeImage = (index) => {
@@ -103,13 +118,27 @@ export default function AdminProducts() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      let imageUrls = formData.images;
+
+      const hasBase64 = imageUrls.some(img => typeof img === 'string' && img.startsWith('data:'));
+      if (hasBase64) {
+        const productId = editingProduct?._id || 'temp';
+        const uploadRes = await adminFetch('/api/admin/upload-image', {
+          method: 'POST',
+          body: JSON.stringify({ images: imageUrls, productId }),
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadRes.ok && uploadData.urls?.length > 0) {
+          imageUrls = uploadData.urls;
+        }
+      }
+
       const url = editingProduct ? '/api/admin/products' : '/api/admin/products';
       const method = editingProduct ? 'PUT' : 'POST';
 
       const body = editingProduct
-        ? { ...formData, id: editingProduct._id }
-        : formData;
-      console.log('[products] submit karat:', body.karat, 'full body karat:', JSON.stringify(body.karat));
+        ? { ...formData, images: imageUrls, id: editingProduct._id }
+        : { ...formData, images: imageUrls };
 
       const res = await adminFetch(url, {
         method,
