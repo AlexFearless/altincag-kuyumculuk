@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 const trackLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Çok fazla sorgu. 1 dakika bekleyin.' });
 
-const TRACK_SECRET = process.env.TRACK_SECRET;
+const TRACK_SECRET = process.env.TRACK_SECRET || crypto.randomBytes(32).toString('hex');
 
 function generateTrackToken(orderId) {
   return crypto.createHmac('sha256', TRACK_SECRET).update(orderId).digest('hex').substring(0, 16);
@@ -55,13 +55,11 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Sipariş bulunamadı. Kodu kontrol edin.' });
     }
 
-    if (!TRACK_SECRET) {
-      return res.status(200).json({ success: true, requiresToken: true });
-    }
-
-    const expectedToken = generateTrackToken(order.id);
-    if (!token || token !== expectedToken) {
-      return res.status(200).json({ success: true, requiresToken: true });
+    if (TRACK_SECRET) {
+      const expectedToken = generateTrackToken(order.id);
+      if (!token || token !== expectedToken) {
+        return res.status(200).json({ success: true, requiresToken: true });
+      }
     }
 
     const { data: orderItems } = await db
