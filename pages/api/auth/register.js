@@ -57,8 +57,11 @@ export default async function handler(req, res) {
         subject: 'AltınÇağ Kuyumculuk - E-posta Doğrulama Kodu',
         html: `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:30px;background:#f9f6f1;border-radius:12px;"><div style="text-align:center;margin-bottom:30px;"><h1 style="color:#8B6914;font-size:24px;margin:0;">AltınÇağ Kuyumculuk</h1></div><div style="background:white;border-radius:8px;padding:30px;text-align:center;"><h2 style="color:#3d3024;font-size:20px;margin-bottom:10px;">E-posta Doğrulama</h2><p style="color:#666;font-size:14px;margin-bottom:25px;">Merhaba ${sanitize(name.trim())}, hesabınızı doğrulamak için kodunuz:</p><div style="background:#f9f6f1;border-radius:8px;padding:20px;margin-bottom:25px;"><span style="font-size:36px;font-weight:bold;color:#8B6914;letter-spacing:8px;">${verificationCode}</span></div><p style="color:#999;font-size:12px;">Bu kod 10 dakika geçerlidir.</p></div></div>`,
       });
+      console.log('[register] Email result:', JSON.stringify(result));
       emailSent = result.success;
-    } catch {}
+    } catch (e) {
+      console.error('[register] Email catch error:', e?.message || e);
+    }
 
     res.status(201).json({
       success: true, requiresVerification: true, email: cleanEmail, emailSent,
