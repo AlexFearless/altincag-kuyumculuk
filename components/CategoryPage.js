@@ -16,7 +16,7 @@ const categoryNames = {
 export default function CategoryPage({ category }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState('random');
 
   useEffect(() => {
     fetchProducts();
@@ -30,6 +30,12 @@ export default function CategoryPage({ category }) {
       let sortedProducts = data.products || [];
 
       switch (sortBy) {
+        case 'random':
+          for (let i = sortedProducts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [sortedProducts[i], sortedProducts[j]] = [sortedProducts[j], sortedProducts[i]];
+          }
+          break;
         case 'price-asc':
           sortedProducts.sort((a, b) => a.price - b.price);
           break;
@@ -75,6 +81,7 @@ export default function CategoryPage({ category }) {
             className="px-4 py-2 bg-white border border-earth-200 rounded-sm text-sm text-earth-700
                        focus:outline-none focus:border-gold-500"
           >
+            <option value="random">Rastgele</option>
             <option value="newest">En Yeni</option>
             <option value="price-asc">Fiyat: Düşükten Yükseğe</option>
             <option value="price-desc">Fiyat: Yüksekten Düşüğe</option>

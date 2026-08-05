@@ -70,11 +70,11 @@ export default function SearchBar({ isAdmin = false }) {
     }
   };
 
-  const handleResultClick = (productSlug) => {
+  const handleResultClick = (productSlug, productId) => {
     setIsOpen(false);
     setQuery('');
     if (isAdmin) {
-      router.push('/admin/products');
+      router.push(`/admin/products?edit=${productId}`);
     }
   };
 
@@ -107,8 +107,8 @@ export default function SearchBar({ isAdmin = false }) {
             {results.map((product) => (
               <Link
                 key={product._id}
-                href={isAdmin ? '/admin/products' : `/urun/${product.slug}`}
-                onClick={() => handleResultClick(product.slug)}
+                href={isAdmin ? `/admin/products?edit=${product._id}` : `/urun/${product.slug}`}
+                onClick={() => handleResultClick(product.slug, product._id)}
                 className="flex items-center px-4 py-3 hover:bg-earth-50 transition-colors border-b border-earth-50 last:border-0"
               >
                 {product.images && product.images[0] ? (

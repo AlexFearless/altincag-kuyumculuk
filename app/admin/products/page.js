@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { adminFetch } from '@/lib/adminApi';
 
 export default function AdminProducts() {
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,6 +55,15 @@ export default function AdminProducts() {
   useEffect(() => {
     fetchProducts();
   }, [filterCategory]);
+
+  useEffect(() => {
+    if (editId && products.length > 0) {
+      const product = products.find(p => p._id === editId);
+      if (product) {
+        handleEdit(product);
+      }
+    }
+  }, [editId, products]);
 
   const fetchProducts = async () => {
     try {

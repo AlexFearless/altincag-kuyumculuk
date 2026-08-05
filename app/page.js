@@ -125,6 +125,34 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="py-12 lg:py-20 bg-[#f9f7f4]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+            <div className="rounded-lg overflow-hidden">
+              <img
+                src="/tanitim/kutu.jpg"
+                alt="AltınÇağ Kuyumculuk Takı Kutusu"
+                className="w-full h-auto object-cover"
+              />
+            </div>
+            <div className="text-center lg:text-left">
+              <h2 className="font-serif text-2xl lg:text-3xl font-bold text-earth-800 mb-4">
+                Senin Altınçağ'ın.<br />Altınçağ'ını yaşa, fırsatları kaçırma.
+              </h2>
+              <p className="text-earth-500 text-sm leading-relaxed mb-6 max-w-md mx-auto lg:mx-0">
+                Her takı, bir iz. Her detay, bir hatıra. Altınçağ koleksiyonu; zarafeti, ustalığı ve duyguyu bir araya getiriyor. Altınçağ ile şıklığınız zamansız bir çizgiye taşınır.
+              </p>
+              <Link
+                href="/magaza"
+                className="inline-block border border-earth-800 text-earth-800 px-8 py-3 rounded-sm text-xs font-medium uppercase tracking-wider hover:bg-earth-800 hover:text-white transition-colors"
+              >
+                Mağazamızı Ziyaret Edin
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="py-12 lg:py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <InstagramIcon className="w-8 h-8 text-earth-400 mx-auto mb-4" />
@@ -223,17 +251,16 @@ export default function HomePage() {
 
       <section className="py-12 lg:py-16 bg-white border-t border-earth-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
-            <div>
-              <p className="text-xs text-earth-400 uppercase tracking-[0.2em] mb-3 font-medium">Mağaza</p>
-              <h2 className="font-serif text-3xl lg:text-4xl font-bold text-earth-800 mb-4">
-                Mağazamızı Ziyaret Edin
-              </h2>
-              <p className="text-earth-500 text-sm leading-relaxed mb-8 max-w-md">
-                Altınçag Kuyumculuk'a hoş geldiniz. Mağazamızda geniş ürün yelpazemizi keşfedin ve uzman ekibimizle tanışın.
-              </p>
+          <p className="text-xs text-earth-400 uppercase tracking-[0.2em] mb-3 font-medium text-center">Mağaza</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold text-earth-800 mb-10 text-center">
+            Mağazalarımızı Ziyaret Edin
+          </h2>
 
-              <div className="space-y-5">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+            {/* Mağaza 1 - Çağlayan */}
+            <div className="bg-earth-50 rounded-lg p-6 lg:p-8">
+              <h3 className="font-serif text-xl font-bold text-earth-800 mb-4">Çağlayan Şubesi</h3>
+              <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <span className="text-xs text-earth-400 uppercase tracking-wider w-20 pt-0.5 flex-shrink-0 font-medium">Adres</span>
                   <span className="text-sm text-earth-700">
@@ -248,7 +275,7 @@ export default function HomePage() {
                   </a>
                 </div>
                 <div className="flex items-start gap-4">
-                  <span className="text-xs text-earth-400 uppercase tracking-wider w-20 pt-0.5 flex-shrink-0 font-medium">Çalışma Saatleri</span>
+                  <span className="text-xs text-earth-400 uppercase tracking-wider w-20 pt-0.5 flex-shrink-0 font-medium">Saatler</span>
                   <div className="text-sm space-y-1.5">
                     <div className="flex justify-between gap-8">
                       <span className="text-earth-600">Pazartesi — Cumartesi</span>
@@ -274,36 +301,108 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-
-              <div className="flex gap-3 mt-8">
+              <div className="flex gap-3 mt-6">
                 <a
-                  href="https://www.google.com/maps/place/%C3%87a%C4%9Flayan,+Vatan+Cd.+No:55,+34403+Ka%C4%9Fitane%2F%C4%B0stanbul,+%D0%A2%D1%83%D1%80%D1%86%D0%B8%D1%8F/@41.0862,28.9766,16z/data=!4m6!3m5!1s0x14cab6e612907189:0x58cdd4fc5ab2473c!8m2!3d41.0762574!4d28.9814077!16s%2Fg%2F11nnky_vb0?hl=tr"
+                  href="https://www.google.com/maps/place/ALTIN%C3%87A%C4%9E+KUYUMCULUK/@41.0761844,28.9787844,17z/data=!3m1!4b1!4m6!3m5!1s0x14cab70050380f5f:0xb4b79f085c8c2d1c!8m2!3d41.0761844!4d28.9813593!16s%2Fg%2F11x7cvc8kt?entry=ttu"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-earth-800 text-white px-6 py-3 rounded-sm text-sm font-medium hover:bg-earth-700 transition-colors"
+                  className="bg-earth-800 text-white px-5 py-2.5 rounded-sm text-xs font-medium hover:bg-earth-700 transition-colors"
                 >
                   Yol Tarifi Al
                 </a>
                 <a
                   href="tel:+902122322212"
-                  className="border border-earth-300 text-earth-700 px-6 py-3 rounded-sm text-sm font-medium hover:border-gold-500 hover:text-gold-600 transition-colors"
+                  className="border border-earth-300 text-earth-700 px-5 py-2.5 rounded-sm text-xs font-medium hover:border-gold-500 hover:text-gold-600 transition-colors"
                 >
                   ARA
                 </a>
               </div>
+              <div className="rounded-lg overflow-hidden border border-earth-200 h-[250px] mt-6">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3008.9!2d28.9813593!3d41.0761844!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cab70050380f5f:0xb4b79f085c8c2d1c!2sALTIN%C3%87A%C4%9E+KUYUMCULUK!5e0!3m2!1str!2str!4v1"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="AltınÇağ Kuyumculuk Çağlayan Şubesi"
+                />
+              </div>
             </div>
 
-            <div className="rounded-lg overflow-hidden border border-earth-100 h-[350px] lg:h-[420px]">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3008.9!2d28.9766!3d41.0862!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cab6e612907189:0x58cdd4fc5ab2473c!2sAlt%C4%B1n%C3%A7a%C4%9F+Kuyumculuk!5e0!3m2!1str!2str!4v1"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="AltınÇağ Kuyumculuk Konumu"
-              />
+            {/* Mağaza 2 - Fatih Şubesi */}
+            <div className="bg-earth-50 rounded-lg p-6 lg:p-8">
+              <h3 className="font-serif text-xl font-bold text-earth-800 mb-4">Fatih Şubesi</h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-4">
+                  <span className="text-xs text-earth-400 uppercase tracking-wider w-20 pt-0.5 flex-shrink-0 font-medium">Adres</span>
+                  <span className="text-sm text-earth-700">
+                    Akşemsettin, Fevzipaşa Cd. No:45/A,<br />
+                    34080 Fatih / İstanbul
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs text-earth-400 uppercase tracking-wider w-20 flex-shrink-0 font-medium">Telefon</span>
+                  <a href="tel:+902122322212" className="text-sm text-earth-700 hover:text-gold-600 transition-colors">
+                    (0212) 232 22 12
+                  </a>
+                </div>
+                <div className="flex items-start gap-4">
+                  <span className="text-xs text-earth-400 uppercase tracking-wider w-20 pt-0.5 flex-shrink-0 font-medium">Saatler</span>
+                  <div className="text-sm space-y-1.5">
+                    <div className="flex justify-between gap-8">
+                      <span className="text-earth-600">Pazartesi — Cumartesi</span>
+                      <span className="text-earth-800 font-medium">09:00 — 20:00</span>
+                    </div>
+                    <div>
+                      <span className="text-earth-600">Pazar </span>
+                      <span className="text-red-400 font-medium">Kapalı</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 pt-1">
+                      {isSunday || !isOpen ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-red-400" />
+                          <span className="text-xs text-red-400">Şu an kapalı</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-green-500" />
+                          <span className="text-xs text-green-600">Şu an açık</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <a
+                  href="https://www.google.com/maps/place//data=!4m2!3m1!1s0x14cabb92f0d0e51f:0xc35ea5259e1737c9?sa=X&ved=1t:8290&ictx=111"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-earth-800 text-white px-5 py-2.5 rounded-sm text-xs font-medium hover:bg-earth-700 transition-colors"
+                >
+                  Yol Tarifi Al
+                </a>
+                <a
+                  href="tel:+902122322212"
+                  className="border border-earth-300 text-earth-700 px-5 py-2.5 rounded-sm text-xs font-medium hover:border-gold-500 hover:text-gold-600 transition-colors"
+                >
+                  ARA
+                </a>
+              </div>
+              <div className="rounded-lg overflow-hidden border border-earth-200 h-[250px] mt-6">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3008.9!2d28.98!3d41.08!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cabb92f0d0e51f:0xc35ea5259e1737c9!2e0!5e0!3m2!1str!2str"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="AltınÇağ Kuyumculuk Fatih Şubesi"
+                />
+              </div>
             </div>
           </div>
         </div>
